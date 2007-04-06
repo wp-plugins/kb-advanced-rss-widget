@@ -6,7 +6,7 @@ Requires at least: 2.0
 Tested up to: 2.0
 Stable tag: trunk
 
-Similar to the default RSS widget, but gives you complete greater control over how RSS feeds are parsed for your sidebar.
+Similar to the default RSS widget, but gives you complete control over how RSS feeds are parsed for your sidebar.
 
 == Description ==
 
