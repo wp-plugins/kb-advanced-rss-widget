@@ -1,12 +1,14 @@
 <?php
 /*
 Plugin Name: KB Advanced RSS Widget
-Description: Gives user complete control over how feed is displayed. Modified from the RSS widget.
+Description: Gives user complete control over how feeds are displayed.
 Author: Adam R. Brown
 Version: 1.0
 Plugin URI: http://adambrown.info/b/widgets/kb-advanced-rss/
 Author URI: http://adambrown.info/
 */
+
+// Credit where it's due: This widget is a (heavily) modified version of the default RSS widget distributed with the Sidebar Widgets plugin. Kudos to those guys for figuring out the essentials.
 
 function widget_kbrss_init() {
 
