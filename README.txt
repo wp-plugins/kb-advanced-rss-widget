@@ -13,7 +13,7 @@ Similar to the default RSS widget, but gives you complete control over how RSS f
 The Sidebar Widgets plugin comes with an RSS widget, but you get no control over how the feed shows up in your sidebar. Want more control? The KB Advanced RSS widget gives it to you. With it, you can
 
 * Decide which RSS fields to display (as opposed to the default RSS widget, which limits you to link and title), and
-* Decide how to format the fields (it doesn’t have to be a list if you don’t want it to be).
+* Decide how to format the fields (it doesn't have to be a list if you don't want it to be).
 
 Be aware that it's called "advanced" for a reason. You need to know some HTML to use this fully. Also, please note that this is a widget. That means you need to be using the [Wordpress sidebar widgets plugin](http://wordpress.org/extend/plugins/widgets/).
 
