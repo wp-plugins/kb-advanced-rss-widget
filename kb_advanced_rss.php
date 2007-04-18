@@ -3,7 +3,7 @@
 Plugin Name: KB Advanced RSS Widget
 Description: Gives user complete control over how feeds are displayed.
 Author: Adam R. Brown
-Version: 1.0
+Version: 1.0.1
 Plugin URI: http://adambrown.info/b/widgets/kb-advanced-rss/
 Author URI: http://adambrown.info/
 */
@@ -67,10 +67,6 @@ function widget_kbrss_init() {
 		
 		if ( empty($output_format) )
 			$output_format = '<li><a class="kbrsswidget" href="^link$" title="^description$">^title$</a></li>';
-		#if ( empty($output_begin) )	// needed this for testing. but let's allow people to have blanks here.
-		#	$output_begin = "<ul>";
-		#if ( empty($output_end) )
-		#	$output_end = "</ul>";
 
 		$url = wp_specialchars(strip_tags($url), 1);
 		
@@ -171,7 +167,8 @@ function widget_kbrss_init() {
 	}
 
 	function widget_kbrss_control($number) {
-		$options = $newoptions = get_option('widget_kbrss');
+		$options = get_option('widget_kbrss');
+		$newoptions = $options;
 
 		if ( $_POST["kbrss-submit-$number"] ) {
 			$newoptions[$number]['items'] = (int) $_POST["kbrss-items-$number"];
@@ -198,17 +195,22 @@ function widget_kbrss_init() {
 		$output_end = htmlspecialchars($options[$number]['output_end'], ENT_QUOTES);
 		#$output_end = $options[$number]['output_end'];
 
-		if ( empty($items) || $items < 1 ) $items = 10;
-		if ( empty($output_format)) $output_format = "<li><a href='^link\$' title='^description\$'>^title\$</a></li>";
-		if ( empty($url))	$output_begin = "<ul>";	// note that we're checking whether the url is empty. that way we don't re-populate these fields if somebody
-		if ( empty($url))	$output_end = "</ul>";	// intentionally cleared them. we only want to populate them when beginning a new widget.
-		if ( empty($url)){
-			if ( file_exists(dirname(__FILE__) . '/rss.png') )
-				$icon = str_replace(ABSPATH, get_settings('siteurl').'/', dirname(__FILE__)) . '/rss.png';
-			else
-				$icon = get_settings('siteurl').'/wp-includes/images/rss.png';
+		if ( empty($items) || $items < 1 ){
+			$items = 10;
 		}
-		if ( empty($url) )			$url = "http://";	// this comes last for a reason; look at the previous few lines.
+		if ( '' == $output_format ){
+			$output_format = "<li><a href='^link\$' title='^description\$'>^title\$</a></li>";
+		}
+		if ( '' == $url ){
+			$output_begin = "<ul>";	// note that we're checking whether the url is empty. that way we don't re-populate these fields if somebody
+			$output_end = "</ul>";	// intentionally cleared them. we only want to populate them when beginning a new widget.
+			if ( file_exists(dirname(__FILE__) . '/rss.png') ){
+				$icon = str_replace(ABSPATH, get_settings('siteurl').'/', dirname(__FILE__)) . '/rss.png';
+			}else{
+				$icon = get_settings('siteurl').'/wp-includes/images/rss.png';
+			}
+			$url = "http://";
+		}
 		
 	?>
 				<p><strong>Basic Settings</strong></p>
