@@ -3,7 +3,7 @@ Contributors: adamrbrown
 Donate link: http://adambrown.info/b/widgets/
 Tags: widget, rss, feeds
 Requires at least: 2.0
-Tested up to: 2.0
+Tested up to: 2.1.3
 Stable tag: trunk
 
 Similar to the default RSS widget, but gives you complete control over how RSS feeds are parsed for your sidebar.
