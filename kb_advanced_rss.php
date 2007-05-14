@@ -3,7 +3,7 @@
 Plugin Name: KB Advanced RSS Widget
 Description: Gives user complete control over how feeds are displayed.
 Author: Adam R. Brown
-Version: 1.1a
+Version: 1.2
 Plugin URI: http://adambrown.info/b/widgets/kb-advanced-rss/
 Author URI: http://adambrown.info/
 */
@@ -15,6 +15,7 @@ Author URI: http://adambrown.info/
 	1.0.1 	Simply some code
 	1.1	Fix bug that kept it from working on pre-PHP5 systems
 	1.1a	Minor text changes
+	1.2	Title can be blank
 */
 
 function widget_kbrss_init() {
@@ -66,14 +67,14 @@ function widget_kbrss_init() {
 		$desc = wp_specialchars(strip_tags(html_entity_decode($rss->channel['description'], ENT_QUOTES)), 1);
 		$title = $options[$number]['title'];
 		
-		if ( empty($title) )
+		/*if ( empty($title) )
 			$title = htmlentities(strip_tags($rss->channel['title']));
 		
 		if ( empty($title) )
 			$title = $desc;
 		
 		if ( empty($title) )
-			$title = __('Unknown Feed', 'kbwidgets');
+			$title = __('Unknown Feed', 'kbwidgets'); */
 		
 		$output_format = $options[$number]['output_format'];
 		$output_begin = $options[$number]['output_begin'];
