@@ -3,7 +3,7 @@
 Plugin Name: KB Advanced RSS Widget
 Description: Gives user complete control over how feeds are displayed.
 Author: Adam R. Brown
-Version: 1.2.1
+Version: 1.3
 Plugin URI: http://adambrown.info/b/widgets/kb-advanced-rss/
 Author URI: http://adambrown.info/
 */
@@ -17,6 +17,7 @@ Author URI: http://adambrown.info/
 	1.1a	Minor text changes
 	1.2	Title can be blank
 	1.2.1	bug
+	1.3	Workaround for a WP v2.2 bug
 */
 
 function widget_kbrss_init() {
@@ -39,6 +40,24 @@ function widget_kbrss_init() {
 		else
 			require_once(ABSPATH . WPINC . '/rss-functions.php');
 		extract($args);
+			// workaround for a bug in WP v 2.2
+			if ( 1 == $number ){	// don't need the workaround if we KNOW that a number was passed
+				// if $number should be 2, then something like this will have been passed with the $args:
+				// [before_widget] => <li id="kb-advanced-rss-2" class="widget 2">
+				// that's the only way to extract the correct number.
+				$realnum = explode('"', $before_widget); // now we've got this:
+				    # [0] => <li id=
+				    # [1] > kb-advanced-rss-1
+				    # [2] =>  class=
+				    # [3] => widget 1
+				    # [4] => >
+				$realnum = str_replace('widget ', '', $realnum[3]); // grab the number from [3]
+				if ( is_numeric( $realnum) ){
+					$number = (int) $realnum;
+				}
+			}
+			// end of v2.2 workaround		
+		
 		$options = get_option('widget_kbrss');
 		$num_items = (int) $options[$number]['items'];
 		$show_summary = $options[$number]['show_summary'];
@@ -300,6 +319,8 @@ function widget_kbrss_init() {
 		if ( $number < 1 ) $number = 1;
 		if ( $number > 9 ) $number = 9;
 		for ($i = 1; $i <= 9; $i++) {
+			#$name = sprintf('KB Adv Rss %d', $i);
+			#$id = "kbrss-$i";
 			$name = array('KB Advanced RSS %s', 'widgets', $i);
 			register_sidebar_widget($name, $i <= $number ? 'widget_kbrss' : /* unregister */ '', $i);
 			register_widget_control($name, $i <= $number ? 'widget_kbrss_control' : /* unregister */ '', 700, 580, $i);

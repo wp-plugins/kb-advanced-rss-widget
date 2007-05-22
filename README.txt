@@ -3,7 +3,7 @@ Contributors: adamrbrown
 Donate link: http://adambrown.info/b/widgets/
 Tags: widget, rss, feeds
 Requires at least: 2.0
-Tested up to: 2.1.3
+Tested up to: 2.2
 Stable tag: trunk
 
 Similar to the default RSS widget, but gives you complete control over how RSS feeds are parsed for your sidebar.
@@ -15,7 +15,7 @@ The Sidebar Widgets plugin comes with an RSS widget, but you get no control over
 * Decide which RSS fields to display (as opposed to the default RSS widget, which limits you to link and title), and
 * Decide how to format the fields (it doesn't have to be a list if you don't want it to be).
 
-Be aware that it's called "advanced" for a reason. You need to know some HTML to use this fully. Also, please note that this is a widget. That means you need to be using the [Wordpress sidebar widgets plugin](http://wordpress.org/extend/plugins/widgets/).
+Be aware that it's called "advanced" for a reason. You need to know some HTML to use this fully. Also, please note that this is a widget. If you're using pre-2.2 Wordpress, you need to be using the [Wordpress sidebar widgets plugin](http://wordpress.org/extend/plugins/widgets/).
 
 Instructions and examples are available at the [KB Advanced RSS plugin page](http://adambrown.info/b/widgets/kb-advanced-rss/).
 
@@ -25,7 +25,7 @@ If you post your support questions as comments below, I probably won't see them.
 
 == Installation ==
 
-Because this plugin is a widget, you must have the Sidebar Widgets plugin installed and running for this plugin to work.
+Because this plugin is a widget, you must have the Sidebar Widgets plugin installed and running for this plugin to work (unless you're using WP v 2.2+).
 
 1. Upload `kb_advanced_rss.php` to the `/wp-content/plugins/widgets/` directory.
 1. Activate the widget through the 'Plugins' menu in WordPress.
@@ -41,7 +41,7 @@ You can see examples at the [KB Advanced RSS plugin page](http://adambrown.info/
 
 = What code do I need to place in my sidebar? =
 
-None. This is a widget, so you need to have the [widgets plugin](http://wordpress.org/extend/plugins/widgets/) running and you need to be using a widgets-enabled theme. You control all options for KB Countdown from the widgets administration menu.
+None. This is a widget, so you need to have the [widgets plugin](http://wordpress.org/extend/plugins/widgets/) running and you need to be using a widgets-enabled theme. You control all options for KB Countdown from the widgets administration menu. (Widgets are no longer a plugin in WP v2.2+)
 
 = Which fields are available in the feed? =
 
