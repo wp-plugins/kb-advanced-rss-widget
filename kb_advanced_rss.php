@@ -3,7 +3,7 @@
 Plugin Name: KB Advanced RSS Widget
 Description: Gives user complete control over how feeds are displayed.
 Author: Adam R. Brown
-Version: 1.3
+Version: 1.4
 Plugin URI: http://adambrown.info/b/widgets/kb-advanced-rss/
 Author URI: http://adambrown.info/
 */
@@ -18,6 +18,8 @@ Author URI: http://adambrown.info/
 	1.2	Title can be blank
 	1.2.1	bug
 	1.3	Workaround for a WP v2.2 bug
+	1.3.1	Better troubleshooter
+	1.4	More robust compatibility with 2.2+
 */
 
 function widget_kbrss_init() {
@@ -40,24 +42,6 @@ function widget_kbrss_init() {
 		else
 			require_once(ABSPATH . WPINC . '/rss-functions.php');
 		extract($args);
-			// workaround for a bug in WP v 2.2
-			if ( 1 == $number ){	// don't need the workaround if we KNOW that a number was passed
-				// if $number should be 2, then something like this will have been passed with the $args:
-				// [before_widget] => <li id="kb-advanced-rss-2" class="widget 2">
-				// that's the only way to extract the correct number.
-				$realnum = explode('"', $before_widget); // now we've got this:
-				    # [0] => <li id=
-				    # [1] > kb-advanced-rss-1
-				    # [2] =>  class=
-				    # [3] => widget 1
-				    # [4] => >
-				$realnum = str_replace('widget ', '', $realnum[3]); // grab the number from [3]
-				if ( is_numeric( $realnum) ){
-					$number = (int) $realnum;
-				}
-			}
-			// end of v2.2 workaround		
-		
 		$options = get_option('widget_kbrss');
 		$num_items = (int) $options[$number]['items'];
 		$show_summary = $options[$number]['show_summary'];
@@ -235,7 +219,7 @@ function widget_kbrss_init() {
 			$items = 10;
 		}
 		if ( '' == $output_format ){
-			$output_format = "<li><a href='^link\$' title='^description\$'>^title\$</a></li>";
+			$output_format = "<li><a class='kbrsswidget' href='^link\$' title='^description\$'>^title\$</a></li>";
 		}
 		if ( '' == $url ){
 			$output_begin = "<ul>";	// note that we're checking whether the url is empty. that way we don't re-populate these fields if somebody
@@ -302,7 +286,7 @@ function widget_kbrss_init() {
 	?>
 		<div class="wrap">
 			<form method="POST">
-				<h2><?php _e('KB Advanced RSS Feed Widgets', 'kbwidgets'); ?></h2>
+				<h2>KB Advanced RSS Feed Widgets</h2>
 				<p style="line-height: 30px;"><?php _e('How many KB Advanced RSS widgets would you like?', 'kbwidgets'); ?>
 				<select id="kbrss-number" name="kbrss-number" value="<?php echo $options['number']; ?>">
 	<?php for ( $i = 1; $i < 10; ++$i ) echo "<option value='$i' ".($options['number']==$i ? "selected='selected'" : '').">$i</option>"; ?>
@@ -319,10 +303,11 @@ function widget_kbrss_init() {
 		if ( $number < 1 ) $number = 1;
 		if ( $number > 9 ) $number = 9;
 		for ($i = 1; $i <= 9; $i++) {
-			#$name = sprintf('KB Adv Rss %d', $i);
-			#$id = "kbrss-$i";
-			$name = array('KB Advanced RSS %s', 'widgets', $i);
-			register_sidebar_widget($name, $i <= $number ? 'widget_kbrss' : /* unregister */ '', $i);
+			$name = array('KB Advanced RSS %s', null, $i);
+			if ( function_exists( 'wp_register_sidebar_widget' ) )	// we're using v2.2+ here
+				register_sidebar_widget($name, $i <= $number ? 'widget_kbrss' : /* unregister */ '', '', $i);
+			else
+				register_sidebar_widget($name, $i <= $number ? 'widget_kbrss' : /* unregister */ '', $i);
 			register_widget_control($name, $i <= $number ? 'widget_kbrss_control' : /* unregister */ '', 700, 580, $i);
 		}
 		add_action('sidebar_admin_setup', 'widget_kbrss_setup');
@@ -343,10 +328,10 @@ function widget_kbrss_init() {
 }
 
 // add a filter for troubleshooting feeds
-function widget_kbrss_troubleshooter($content){
+function widget_kbrss_troubleshooter(){
 	global $userdata;
 	if ( !($_GET['kbrss']) )
-		return $content;
+		return;
 
 	if ( $userdata->user_level >= 7 ){	// that ought to do it
 		if ( file_exists(ABSPATH . WPINC . '/rss.php') )
@@ -354,17 +339,19 @@ function widget_kbrss_troubleshooter($content){
 		else
 			require_once(ABSPATH . WPINC . '/rss-functions.php');
 		$rss = @fetch_rss($_GET['kbrss']);
-		$out = "<pre>";
-		$out .= print_r($rss->items, true);
-		$out .= "</pre>";
-		return $out;
+		$out = "<html><head><title>KB RSS Troubleshooter</title></head><body><div style='background:#cc0;padding:1em;'><h2>KB Advanced RSS Troubleshooter</h2><p>Below, you should see the feed as Wordpress passes it to the KB Advanced RSS widget.</p></div><pre>";
+		$out .= htmlspecialchars( print_r($rss->items, true) );
+		$out .= "</pre></body></html>";
+		print $out;
+		die;
 	}else{
-		return "<p>You must be logged in as an administrator to troubleshoot feeds.</p>";
+		print "<p>You must be logged in as an administrator to troubleshoot feeds.</p>";
+		die;
 	}
-	return $content;
+	return;
 }
 
 add_action('widgets_init', 'widget_kbrss_init');
-add_filter('the_content', 'widget_kbrss_troubleshooter');
+add_action('template_redirect', 'widget_kbrss_troubleshooter');
 
 ?>
