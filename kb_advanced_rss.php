@@ -3,7 +3,7 @@
 Plugin Name: KB Advanced RSS Widget
 Description: Gives user complete control over how feeds are displayed.
 Author: Adam R. Brown
-Version: 1.4
+Version: 1.5
 Plugin URI: http://adambrown.info/b/widgets/kb-advanced-rss/
 Author URI: http://adambrown.info/
 */
@@ -20,7 +20,24 @@ Author URI: http://adambrown.info/
 	1.3	Workaround for a WP v2.2 bug
 	1.3.1	Better troubleshooter
 	1.4	More robust compatibility with 2.2+
+	1.5	New options 
+		- can now choose whether to link title to RSS feed. 
+		- use ?kbrss_cache=flush to force purge of cache.
+		- Easier to have more than 9 widgets (use the setting below)
+		- Now defaults to 18 widgets max (for folks making a news aggregation page, I guess)
 */
+
+// SETTINGS
+define('KBRSS_HOWMANY', 18);	// max number of KB RSS widgets that you can have. Set to whatever you want. But don't put it higher than you need, or you may gum up your server.
+
+
+
+
+
+// okay, settings are done. Stop editing.
+
+
+
 
 function widget_kbrss_init() {
 
@@ -61,7 +78,16 @@ function widget_kbrss_init() {
 		if ( $url_timestamp < ( time() - 3600 ) )
 			delete_option("rss_{$md5}");
 
-		
+		// force deletion of cache (must be logged in as admin)
+		if ( 'flush' == $_GET['kbrss_cache'] ){
+			global $userdata;
+			if ( $userdata->user_level >= 7 ){
+				delete_option("rss_{$md5}");
+			}
+		}
+
+
+	
 		$rss = @fetch_rss($url);	// @ prevents errors after deleting the option
 		$link = wp_specialchars(strip_tags($rss->channel['link']), 1);
 		
@@ -87,7 +113,11 @@ function widget_kbrss_init() {
 		if ( empty($output_format) )
 			$output_format = '<li><a class="kbrsswidget" href="^link$" title="^description$">^title$</a></li>';
 
+
 		$url = wp_specialchars(strip_tags($url), 1);
+
+		if ( ( "link" == $options[$number]['linktitle'] ) && $title )
+			$title = "<a href='$url'>$title</a>";
 		
 		$icon = $options[$number]['icon'];
 		
@@ -195,6 +225,7 @@ function widget_kbrss_init() {
 			$newoptions[$number]['url'] = strip_tags(stripslashes($_POST["kbrss-url-$number"]));
 			$newoptions[$number]['icon'] = strip_tags(stripslashes($_POST["kbrss-icon-$number"]));
 			$newoptions[$number]['title'] = trim(strip_tags(stripslashes($_POST["kbrss-title-$number"])));
+			$newoptions[$number]['linktitle'] = ( "link" == $_POST["kbrss-linktitle-$number"] ) ? "link" : null;
 			$newoptions[$number]['output_format'] = htmlspecialchars_decode( stripslashes($_POST["kbrss-output_format-$number"]) );
 			$newoptions[$number]['output_begin'] = htmlspecialchars_decode( stripslashes($_POST["kbrss-output_begin-$number"]) );
 			$newoptions[$number]['output_end'] = htmlspecialchars_decode( stripslashes($_POST["kbrss-output_end-$number"]) );
@@ -208,6 +239,7 @@ function widget_kbrss_init() {
 		$icon = htmlspecialchars($options[$number]['icon'], ENT_QUOTES);
 		$items = (int) $options[$number]['items'];
 		$title = htmlspecialchars($options[$number]['title'], ENT_QUOTES);
+		$linktitle = $options[$number]['linktitle'];
 		$output_format = htmlspecialchars($options[$number]['output_format'], ENT_QUOTES);
 		#$output_format = $options[$number]['output_format'];
 		$output_begin = htmlspecialchars($options[$number]['output_begin'], ENT_QUOTES);
@@ -251,6 +283,10 @@ function widget_kbrss_init() {
 					<td><?php _e('Number of items to display:', 'kbwidgets'); ?> </td>
 					<td><select id="kbrss-items-<?php echo $number; ?>" name="kbrss-items-<?php echo $number; ?>"><?php for ( $i = 1; $i <= 10; ++$i ) echo "<option value='$i' ".($items==$i ? "selected='selected'" : '').">$i</option>"; ?></select></td>
 				</tr>
+				<tr>
+					<td>Link title to feed URL? </td>
+					<td><input type="checkbox" name="kbrss-linktitle-<?php echo $number; ?>" id="kbrss-linktitle-<?php echo $number; ?>" value="link" <?php if ( "link" == $linktitle ) { echo 'checked="checked"'; } ?> /> </td>
+				</tr>
 				</table>
 				
 				<p> &nbsp; </p>
@@ -270,7 +306,7 @@ function widget_kbrss_init() {
 		$options = $newoptions = get_option('widget_kbrss');
 		if ( isset($_POST['kbrss-number-submit']) ) {
 			$number = (int) $_POST['kbrss-number'];
-			if ( $number > 9 ) $number = 9;
+			if ( $number > KBRSS_HOWMANY ) $number = KBRSS_HOWMANY;
 			if ( $number < 1 ) $number = 1;
 			$newoptions['number'] = $number;
 		}
@@ -289,7 +325,7 @@ function widget_kbrss_init() {
 				<h2>KB Advanced RSS Feed Widgets</h2>
 				<p style="line-height: 30px;"><?php _e('How many KB Advanced RSS widgets would you like?', 'kbwidgets'); ?>
 				<select id="kbrss-number" name="kbrss-number" value="<?php echo $options['number']; ?>">
-	<?php for ( $i = 1; $i < 10; ++$i ) echo "<option value='$i' ".($options['number']==$i ? "selected='selected'" : '').">$i</option>"; ?>
+	<?php for ( $i = 1; $i <= KBRSS_HOWMANY; ++$i ) echo "<option value='$i' ".($options['number']==$i ? "selected='selected'" : '').">$i</option>"; ?>
 				</select>
 				<span class="submit"><input type="submit" name="kbrss-number-submit" id="kbrss-number-submit" value="<?php _e('Save'); ?>" /></span></p>
 			</form>
@@ -301,8 +337,8 @@ function widget_kbrss_init() {
 		$options = get_option('widget_kbrss');
 		$number = $options['number'];
 		if ( $number < 1 ) $number = 1;
-		if ( $number > 9 ) $number = 9;
-		for ($i = 1; $i <= 9; $i++) {
+		if ( $number > KBRSS_HOWMANY ) $number = KBRSS_HOWMANY;
+		for ($i = 1; $i <= KBRSS_HOWMANY; $i++) {
 			$name = array('KB Advanced RSS %s', null, $i);
 			if ( function_exists( 'wp_register_sidebar_widget' ) )	// we're using v2.2+ here
 				register_sidebar_widget($name, $i <= $number ? 'widget_kbrss' : /* unregister */ '', '', $i);
