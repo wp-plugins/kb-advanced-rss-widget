@@ -43,11 +43,21 @@ You can see examples at the [KB Advanced RSS plugin page](http://adambrown.info/
 
 None. This is a widget, so you need to have the [widgets plugin](http://wordpress.org/extend/plugins/widgets/) running and you need to be using a widgets-enabled theme. You control all options for KB Countdown from the widgets administration menu. (Widgets are no longer a plugin in WP v2.2+)
 
-= Which fields are available in the feed? =
+= What can I do with this widget? =
 
-Look at the source code for the feed. But note that Wordpress parses feeds in ways that you might not expect. After you've installed my widget, you can add `?kbrss=http://path.to.feed/` to your blog's URL to see exactly which fields are available. (You'll need to be logged in to do this).
+Lots of things. The built-in RSS widget will handle traditional headline-style feeds well, but this widget allows you to handle untraditional feeds just as easily. For example:
+* Weather. Weather.com provides RSS feeds, but you'll find more flexible feeds at [RSSweather.com](http://www.rssweather.com/).
+* Upcoming events. If you have an RSS feed of calendar data, give it a go.
+
+Note that finding a suitable feed is up to you. It needs to be RSS, not just XML. (RSS is a sub-type of XML.) If you're not sure whether the feed will work with Wordpress's feed parser, then use the widget's built in debugger (see below) to check out the feed in question.
+
+= Which fields are available in the feed? Or: I need to debug the feed. =
+
+Begin by looking at the source code for the feed. But note that Wordpress parses feeds in ways that you might not expect. After you've installed my widget, you can add `?kbrss=http://path.to.feed/` to your blog's URL to see exactly which fields are available. (You'll need to be logged in to do this).
 
 If you see that there is a field called `title` (there probably is), you would include this in your widget's output by writing `^title$`. You would probably want to wrap this in some HTML, like this: `<li>^title$</li>`.
+
+If all you see is `array()`--or worse, an error message--then there's a good chance that the feed in question is not an RSS feed, at least not one that the Wordpress parser knows how to handle.
 
 = How do I trim the length of an RSS field? =
 
