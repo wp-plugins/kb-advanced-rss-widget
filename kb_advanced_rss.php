@@ -3,7 +3,7 @@
 Plugin Name: KB Advanced RSS Widget
 Description: Gives user complete control over how feeds are displayed.
 Author: Adam R. Brown
-Version: 1.5.1
+Version: 1.5.2
 Plugin URI: http://adambrown.info/b/widgets/kb-advanced-rss/
 Author URI: http://adambrown.info/
 */
@@ -27,6 +27,7 @@ Author URI: http://adambrown.info/
 		- Now defaults to 18 widgets max (for folks making a news aggregation page, I guess)
 	1.5.1	Links to correct URL if link option is selected.
 		- now defaults to 20 max
+	1.5.2	Embeds only the necessary CSS info.
 */
 
 // SETTINGS
@@ -357,7 +358,7 @@ function widget_kbrss_init() {
 
 	function widget_kbrss_head() {
 	?>
-	<style type="text/css">a.kbrsswidget{display:inline !important;}a.kbrsswidget img{background:orange;color:white;}</style>
+		<style type="text/css">a.kbrsswidget img{background:orange;color:white;}</style>
 	<?php
 	}
 
