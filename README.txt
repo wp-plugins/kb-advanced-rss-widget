@@ -1,9 +1,9 @@
 === KB Advanced RSS Widget ===
 Contributors: adamrbrown
-Donate link: http://adambrown.info/b/widgets/
+Donate link: http://adambrown.info/b/widgets/donate/
 Tags: widget, rss, feeds
 Requires at least: 2.0
-Tested up to: 2.2
+Tested up to: 2.2.1
 Stable tag: trunk
 
 Similar to the default RSS widget, but gives you complete control over how RSS feeds are parsed for your sidebar.
