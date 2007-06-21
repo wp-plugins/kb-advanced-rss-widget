@@ -3,7 +3,7 @@
 Plugin Name: KB Advanced RSS Widget
 Description: Gives user complete control over how feeds are displayed.
 Author: Adam R. Brown
-Version: 1.5.2
+Version: 1.5.3
 Plugin URI: http://adambrown.info/b/widgets/kb-advanced-rss/
 Author URI: http://adambrown.info/
 */
@@ -28,6 +28,8 @@ Author URI: http://adambrown.info/
 	1.5.1	Links to correct URL if link option is selected.
 		- now defaults to 20 max
 	1.5.2	Embeds only the necessary CSS info.
+	1.5.3	works with wp2.2.1. When will the developers quit screwing with the widgets api on every WP update? grrrrr
+
 */
 
 // SETTINGS
@@ -343,12 +345,21 @@ function widget_kbrss_init() {
 		if ( $number > KBRSS_HOWMANY ) $number = KBRSS_HOWMANY;
 		for ($i = 1; $i <= KBRSS_HOWMANY; $i++) {
 			$name = array('KB Advanced RSS %s', null, $i);
-			if ( function_exists( 'wp_register_sidebar_widget' ) )	// we're using v2.2+ here
+			if ('2.2' == $wp_version){
 				register_sidebar_widget($name, $i <= $number ? 'widget_kbrss' : /* unregister */ '', '', $i);
-			else
+				register_widget_control($name, $i <= $number ? 'widget_kbrss_control' : /* unregister */ '', 700, 580, $i);
+			}elseif ( function_exists( 'wp_register_sidebar_widget' ) ){	// we're using v2.2.1+ here
+				$id = "kb-advanced-rss-$i"; // Never never never translate an id
+				$dims = array('width' => 700, 'height' => 580);
+				$class = array( 'classname' => 'widget_kbrss' ); // css classname
+				wp_register_sidebar_widget($id, $name, $i <= $number ? 'widget_kbrss' : /* unregister */ '', $class, $i);
+				wp_register_widget_control($id, $name, $i <= $number ? 'widget_kbrss_control' : /* unregister */ '', $dims, $i);
+			}else{ // pre-2.2 (widgets as a plugin)
 				register_sidebar_widget($name, $i <= $number ? 'widget_kbrss' : /* unregister */ '', $i);
-			register_widget_control($name, $i <= $number ? 'widget_kbrss_control' : /* unregister */ '', 700, 580, $i);
+				register_widget_control($name, $i <= $number ? 'widget_kbrss_control' : /* unregister */ '', 700, 580, $i);
+			}
 		}
+	
 		add_action('sidebar_admin_setup', 'widget_kbrss_setup');
 		add_action('sidebar_admin_page', 'widget_kbrss_page');
 
