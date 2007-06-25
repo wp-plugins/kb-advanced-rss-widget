@@ -131,4 +131,4 @@ No problem. Check out the "Instructions" tab.
 
 = I have a question that isn't addressed here. =
 
-You may ask questions by posting a comment to the [KB Advanced RSS plugin page](http://adambrown.info/b/widgets/category/kb-advanced-rss/).
+Be advised: **If you post your support questions as comments below, I probably won't see them.** Post your support questions at the [KB Advanced RSS plugin page](http://adambrown.info/b/widgets/category/kb-advanced-rss/) on my site if you want an answer.
