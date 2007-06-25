@@ -15,23 +15,85 @@ The Sidebar Widgets plugin comes with an RSS widget, but you get no control over
 * Decide which RSS fields to display (as opposed to the default RSS widget, which limits you to link and title), and
 * Decide how to format the fields (it doesn't have to be a list if you don't want it to be).
 
-Be aware that it's called "advanced" for a reason. You need to know some HTML to use this fully. Also, please note that this is a widget. If you're using pre-2.2 Wordpress, you need to be using the [Wordpress sidebar widgets plugin](http://wordpress.org/extend/plugins/widgets/).
-
-Instructions and examples are available at the [KB Advanced RSS plugin page](http://adambrown.info/b/widgets/kb-advanced-rss/).
+Be aware that it's called "advanced" for a reason. You need to know some HTML to use this fully. Also, please note that this is a widget, so you need to be using a widgets-enabled theme.
 
 = Support =
 
-If you post your support questions as comments below, I probably won't see them. If the FAQs don't answer your question, you can post support questions at the [KB Advanced RSS plugin page](http://adambrown.info/b/widgets/kb-advanced-rss/) on my site.
+If you post your support questions as comments below, I probably won't see them. If the FAQs don't answer your question, you can post support questions at the [KB Advanced RSS plugin page](http://adambrown.info/b/widgets/category/kb-advanced-rss/) on my site.
 
 == Installation ==
 
-Because this plugin is a widget, you must have the Sidebar Widgets plugin installed and running for this plugin to work (unless you're using WP v 2.2+).
+You MUST be using a widgets-enabled theme. If you are using pre-2.2 WordPress, you'll also need the [sidebar widgets plugin](http://wordpress.org/extend/plugins/widgets/).
 
-1. Upload `kb_advanced_rss.php` to the `/wp-content/plugins/widgets/` directory.
+1. Upload `kb_advanced_rss.php` to either `/wp-content/plugins/widgets/` or `/wp-content/plugins/`.
 1. Activate the widget through the 'Plugins' menu in WordPress.
 1. Add the new KB Advanced RSS widget to your sidebar through the 'Presentation => Sidebar Widgets' menu in WordPress. You'll find that the widget has several options, but only the first couple are required.
 
 If you want more (up to 9) KB Advanced RSS widgets, scroll down and increase the allotment, just like you would with text or regular RSS widgets.
+
+== Instructions ==
+
+Background before we continue: Every RSS feed contains a number of items (e.g. headlines). Each item contains a variety of elements; at a minimum, each item usually has a title, a link, and a description.
+
+=Example 1: Basic usage=
+
+To show how this widget works, let's use it to parse an RSS feed in exactly the way that the default RSS widget does. 
+1. The default widget begins with `<ul>` (to make the feed items a list). 
+1. Then, it prints out this line for each item in the feed: `<li><a href="LINK" title="DESCRIPTION">TITLE</a></li>`. 
+1. Finally, it closes the feed with `</ul>` (to end the list).
+
+The KB Advanced RSS widget has three options on the widgets admin screen. First, you enter the HTML that you want to have precede the widget. In this case, that's `<ul>`. Then, you enter the HTML that should follow the widget. Clearly, that's `</ul>` here. Then, you tell it how to parse each item in the feed, using `^ELEMENT$` to specify elements in the feed. To replicate the basic, built-in RSS widget, you would write this: `<li><a href="^link$" title="^description$">^title$</a></li>`. Easy, isn't it?
+
+=Example 2: Adding another element=
+
+How do you know which elements are available? Looking at the RSS feed is a good starting point, but you should be aware that the Wordpress RSS parser modifies feeds when it parses them. To see exactly which elements are available, go to any page on your blog, then add `?kbrss=RSS_URL` to your blog's URL (replacing RSS_URL with the complete URL for the feed you are interested in).
+
+For example, if your blog were at example.com, and you were interested in the Yahoo! News Most Emailed Stories feed, you would type this into your browser: `http://example.com/?kbrss=http://rss.news.yahoo.com/rss/mostemailed`. (That only works if you're logged in as an admin, so you'll have to install the plugin and then try it on your own site to see what that does.)
+
+If you do this, my plugin will spit out a copy of the PHP array that Wordpress produces when parsing your feed. Each item in the feed shows up as a numbered part of the array. Within each item, you'll see that you have fields like "title," "link," "description," and possibly others available. Pick any one of these and add it to your KB Advanced RSS widget. Done.
+
+=Example 3: Trimming an element=
+
+Suppose you want to display each item's description, but some of the descriptions are way too long. If you wanted to trim the description to 50 characters (or any other number), write `^description%%50$`. Note that the %%50 comes before the $. (You can do this to anything, not just the description.) If you go the [plugin's page](http://adambrown.info/b/widgets/category/kb-advanced-rss/), you'll see that I used this technique on the example at the bottom of the sidebar.
+
+=Example 4: What if an RSS item contains an array of elements?=
+
+Okay, now we've moved into the really advanced stuff. You probably won't follow this next part unless you use the ?kbrss= thing from example 2 first and see what I'm talking about. Note that some of the items in Yahoo's feed contain something that looks something like this (it will look slightly different depending on what version of WordPress you're using):
+
+`[media:content] => Array
+       (
+           [url] => http://d.yimg.com/us.yimg.com/p/nm/
+           [type] => image/jpeg
+           [height] => 78
+           [width] => 130
+       )
+`
+
+There are two ways to display elements from this array.
+
+Use `=>` to access one field from the array. So to access the url field from this array, you would need to type this: `^media:content=>url$` into the KB Advanced RSS widget options.
+
+Here's another example of a feed containing an array, but with a twist. When certain versions of Wordpress parse a fellow Wordpress feed, Wordpress turns the "categories" field in the feed into an array. For example, here's how Wordpress parsed part of my blog's feed:
+
+`
+   [title] => KB Countdown update
+   [link] => http://adambrown.info/b/widgets/kb-countdown/
+   [comments] => http://adambrown.info/b/widgets/kb-countdown/feed/
+   [pubdate] => Sat, 31 Mar 2007 22:38:51 +0000
+   [author] => Adam
+   [categories] => Array
+       (
+           [0] => KB Countdown
+           [1] => Widgets
+       )
+   [guid] => http://adambrown.info/b/widgets/kb-countdown/
+`
+
+Now, if you only wanted to list the first category, you would write `^categories=>0$`, as above. But what if you want to loop through all the categories and print all of them? Then write this: `^categories||BEFORE||AFTER$`, where BEFORE and AFTER are the html you want to appear before and after each element in the array. For example, you might write this: `^categores||<li>||</li>$`, or more properly, this: `<ul>^categories||<li>||</li>$</ul>`.
+
+=Support=
+
+Be advised: **If you post your support questions as comments below, I probably won't see them.** Post your support questions at the [KB Advanced RSS plugin page](http://adambrown.info/b/widgets/category/kb-advanced-rss/) on my site if you want an answer.
 
 == Screenshots ==
 
@@ -41,7 +103,7 @@ You can see examples at the [KB Advanced RSS plugin page](http://adambrown.info/
 
 = What code do I need to place in my sidebar? =
 
-None. This is a widget, so you need to have the [widgets plugin](http://wordpress.org/extend/plugins/widgets/) running and you need to be using a widgets-enabled theme. You control all options for KB Countdown from the widgets administration menu. (Widgets are no longer a plugin in WP v2.2+)
+None. This is a widget. If you are using pre-WP v2.2, you need to have the [widgets plugin](http://wordpress.org/extend/plugins/widgets/) running. No matter what version of WP you're using, you need to be using a widgets-enabled theme. You control all options for KB Countdown from the widgets administration menu.
 
 = What can I do with this widget? =
 
@@ -53,20 +115,20 @@ Note that finding a suitable feed is up to you. It needs to be RSS, not just XML
 
 = Which fields are available in the feed? Or: I need to debug the feed. =
 
-Begin by looking at the source code for the feed. But note that Wordpress parses feeds in ways that you might not expect. After you've installed my widget, you can add `?kbrss=http://path.to.feed/` to your blog's URL to see exactly which fields are available. (You'll need to be logged in to do this).
+Begin by looking at the source code for the feed. But note that Wordpress parses feeds in ways that you might not expect. After you've installed my widget, you can add `?kbrss=http://path.to.feed/` to your blog's URL to see exactly which fields are available. (You'll need to be logged in as an admin to do this).
 
-If you see that there is a field called `title` (there probably is), you would include this in your widget's output by writing `^title$`. You would probably want to wrap this in some HTML, like this: `<li>^title$</li>`.
+If you see that there is a field called `title` (there probably is), you would include this in your widget's output by writing `^title$`. You would probably want to wrap this in some HTML, like this: `<li>^title$</li>`. Look under the "Instructions" tab for more details about how to display RSS feeds the way you want them in your sidebar.
 
 If all you see is `array()`--or worse, an error message--then there's a good chance that the feed in question is not an RSS feed, at least not one that the Wordpress parser knows how to handle.
 
 = How do I trim the length of an RSS field? =
 
-Easy. Say that some of the titles in your feed are really long. If you want to trim them all to 50 characters, you would write this: `^title%%50$`, using `%%` to separate the field name from the desired character length.
+Check out the "Instructions" tab.
 
 = Some of the available fields are arrays! =
 
-No problem. If you want to access a specific element in the array--for example, the "url" element in the "media" array--you would write `^media=>url$`. If you want to loop through all the elements in the array--for example, the "categories" element from a Wordpress feed--you would write something like this: `^categories||<li>||</li>$`, which would enclose each category in `<li>` tags.
+No problem. Check out the "Instructions" tab.
 
 = I have a question that isn't addressed here. =
 
-You may ask questions by posting a comment to the [KB Advanced RSS plugin page](http://adambrown.info/b/widgets/kb-advanced-rss/).
+You may ask questions by posting a comment to the [KB Advanced RSS plugin page](http://adambrown.info/b/widgets/category/kb-advanced-rss/).

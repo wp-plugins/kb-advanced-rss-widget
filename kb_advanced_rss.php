@@ -4,7 +4,7 @@ Plugin Name: KB Advanced RSS Widget
 Description: Gives user complete control over how feeds are displayed.
 Author: Adam R. Brown
 Version: 1.5.4
-Plugin URI: http://adambrown.info/b/widgets/kb-advanced-rss/
+Plugin URI: http://adambrown.info/b/widgets/category/kb-advanced-rss/
 Author URI: http://adambrown.info/
 */
 
@@ -297,7 +297,7 @@ function widget_kbrss_init() {
 				
 				<p> &nbsp; </p>
 				
-				<p><strong>Advanced Options</strong><br /><small>Use the default settings to make your feed look like it would using the built-in RSS widget. To customize, use the advanced fields below.<br />Visit the <a href="http://adambrown.info/b/widgets/kb-advanced-rss/">KB Advanced RSS page</a> for tips and support.</small></p>
+				<p><strong>Advanced Options</strong><br /><small>Use the default settings to make your feed look like it would using the built-in RSS widget. To customize, use the advanced fields below.<br />Visit the <a href="http://wordpress.org/extend/plugins/kb-advanced-rss-widget/instructions/">KB Advanced RSS page</a> for tips and support.</small></p>
 				<p style="text-align:center;"><?php _e('What HTML should precede the feed? (Default: &lt;ul&gt;)', 'kbwidgets'); ?></p>
 				<input style="width: 680px;" id="kbrss-output_begin-<?php echo "$number"; ?>" name="kbrss-output_begin-<?php echo "$number"; ?>" type="text" value="<?php echo $output_begin; ?>" />
 				<p style="text-align:center;"><?php _e('What HTML should follow the feed? (Default: &lt;/ul&gt;)', 'kbwidgets'); ?></p>
