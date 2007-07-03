@@ -3,7 +3,7 @@
 Plugin Name: KB Advanced RSS Widget
 Description: Gives user complete control over how feeds are displayed.
 Author: Adam R. Brown
-Version: 1.5.4
+Version: 1.6
 Plugin URI: http://adambrown.info/b/widgets/category/kb-advanced-rss/
 Author URI: http://adambrown.info/
 */
@@ -30,6 +30,7 @@ Author URI: http://adambrown.info/
 	1.5.2	Embeds only the necessary CSS info.
 	1.5.3	works with wp2.2.1. When will the developers quit screwing with the widgets api on every WP update? grrrrr
 	1.5.4	for real this time
+	1.6	option to convert feed from ISO-8859-1 to UTF-8. Thanks to Christoph Juergens (www.cjuergens.de)
 
 */
 
@@ -41,6 +42,17 @@ define('KBRSS_HOWMANY', 20);	// max number of KB RSS widgets that you can have. 
 
 
 // okay, settings are done. Stop editing.
+
+
+
+/* NOTE TO PEOPLE MODIFYING THIS PLUGIN:
+	My apologies for the messiness of this code. I originally wrote it for my own uses, adding new options over time.
+	If I had started with the intention of writing something that would do everything that this does now,
+	I'm sure I could have written a much cleaner plugin.
+	As it stands, this is some horrendous coding to figure out. Good luck.
+	If you make modifications that others might appreciate, post a comment on the plugin's page.
+	thanks
+*/
 
 
 
@@ -115,6 +127,8 @@ function widget_kbrss_init() {
 		$output_format = $options[$number]['output_format'];
 		$output_begin = $options[$number]['output_begin'];
 		$output_end = $options[$number]['output_end'];
+		$utf = $options[$number]['utf'];
+
 		
 		if ( empty($output_format) )
 			$output_format = '<li><a class="kbrsswidget" href="^link$" title="^description$">^title$</a></li>';
@@ -137,7 +151,9 @@ function widget_kbrss_init() {
 			if ( '' != $title )
 				print($before_title . $title . $after_title);
 			echo $output_begin;
-			
+		
+		/* HERE COMES SOME TRULY HIDEOUS CODE. SORRY. AT LEAST IT WORKS, RIGHT? */
+		
 		if ( is_array( $rss->items ) ) {
 			$rss->items = array_slice($rss->items, 0, $num_items);
 					
@@ -148,8 +164,9 @@ function widget_kbrss_init() {
 				$output_format_two[] = explode('$',$value_one);	// e.g. array(  array('<li>') ,  array('title', ' and') ,  array('description', '</li>')  );
 			}
 			unset($output_format_two[0]);	// e.g. array(    array('title', ' and') ,    array('description', '</li>')    );
-			// done preparing output format. Note that each $output_format_two[][0] contains a tag to replace from the feed (title, description)
+			// done preparing output format. Note that each $output_format_two[][0] contains a tag to replace from the feed (title, description). We use this later.
 
+			// loop through each item in feed
 			foreach ($rss->items as $item ) {
 				while ( strstr($item['link'], 'http') != $item['link'] )
 					$item['link'] = substr($item['link'], 1);
@@ -164,11 +181,12 @@ function widget_kbrss_init() {
 					$desc = str_replace(array("\n", "\r"), ' ', wp_specialchars(strip_tags(html_entity_decode($item['description'], ENT_QUOTES)), 1));
 					$summary = '';
 				}
-				
+
 				// prepare the customized parsing
 				$item_output_format = $output_format;
 				
-
+				// okay, this is embarassingly ugly for a little bit.
+				// loop through each requested element (recall that we're in the middle of another loop right now)
 				foreach($output_format_two as $value_two){
 					$value_two[0] = strtolower($value_two[0]);
 					$replaceme = $value_two[0];
@@ -178,42 +196,56 @@ function widget_kbrss_init() {
 						$value_two[0] = $trim_this_rss_thing[0];
 					}	// we'll do the actual trimming in 20 or 30 lines
 					
+					// let's figure out what exactly the user wants from the feed.
+					// at end, $this_rss_thing will contain the requested feed element.
 					if ($value_two[0] == 'link'){
-						$this_rss_thing = $link;
+						$this_rss_thing = $link; // already defined (above)
 					}elseif ($value_two[0] == 'title'){
-						$this_rss_thing = $title;
+						$this_rss_thing = $title; // already defined (above)
 					}elseif ($value_two[0] == 'description'){
-						$this_rss_thing = $desc;
-					}else{
-						unset( $doozy );
-						unset( $this_rss_thing );
-						if ( strpos( $value_two[0], '||' ) ){	// it's an array, and we want to print each element of the array. E.g. "categories" on a wp feed. Write: ^categories||<li>||</li>$. we only require the first ||.
-							$doozy = explode( '||', $value_two[0] );
-							foreach( $item[ $doozy[0] ] as $anotherdoozy ){
+						$this_rss_thing = $desc; // already defined (above)
+					}else{ // okay, user wants a non-standard element from the feed. This is why this plugin exists.
+						unset( $doozy ); // in case it was set on a previous iteration
+						unset( $this_rss_thing ); // same deal
+						// case 1: Element contains an array, and user wants each element of the array.
+						if ( strpos( $value_two[0], '||' ) ){	//  e.g. Write: ^categories||<li>||</li>$. we only require the first ||, second is optional.
+							$doozy = explode( '||', $value_two[0] ); // break up user's request by '||'
+							foreach( $item[ $doozy[0] ] as $anotherdoozy ){ // in example, $doozy[0] is "categories" element of feed
 								$this_rss_thing .= $doozy[1];	// e.g. <li> in this example
 								$this_rss_thing .= $anotherdoozy;	// not stripping tags or using wp_specialchars
 								$this_rss_thing .= $doozy[2];	// e.g. </li> in this example. Might be blank.
 							}
-						}elseif( strpos( $value_two[0], '=>' ) ){	// it's an array, and we want a particular element of the array. E.g. "media:content" => "url" from Yahoo. Write: ^media:content=>url$
-							$doozy = explode( '=>', $value_two[0] );
+						// case 2: Element contains an array, and user wants a particular element from the array.
+						}elseif( strpos( $value_two[0], '=>' ) ){	// E.g. "media:content" => "url" from Yahoo. Write: ^media:content=>url$
+							$doozy = explode( '=>', $value_two[0] ); // gives [0] = "media:content" and [1] = "url"
 							$this_rss_thing = $item[ $doozy[0] ][ $doozy[1] ];	// not stripping tags or anything
-						}else{	// it's just a string.
+						// case 3 (simplest): Element just contains a string.
+						}else{
 							# $this_rss_thing = wp_specialchars( strip_tags( $item[$value_two[0]] ), 1); // prevents images from showing up properly.
-							$this_rss_thing = $item[$value_two[0]];
+							$this_rss_thing = $item[$value_two[0]]; // grab the element.
 						}
 					}
 
+					// trim, if requested
 					if ( is_array( $trim_this_rss_thing ) ){
 						if ( 0 < $trim_this_rss_thing[1] ){
 							$this_rss_thing = substr( $this_rss_thing, 0, $trim_this_rss_thing[1] );
 						}
 					}
 					unset( $trim_this_rss_thing );
+					// end trimming
 
+					// okay, we have feed content in $this_rss_thing. Let's substitute feed contact in place of the "^element$" tag.
+					// Note that this occurs in a loop, so this replace function happens once for each tag.
 					$item_output_format = str_replace('^'.$replaceme.'$', $this_rss_thing, $item_output_format);
 				}
-				// done with customized parsing
-				echo $item_output_format;
+
+				// convert to utf 8 if requested
+				if ( $utf )
+					$item_output_format = utf8_encode( $item_output_format );
+
+				// done with customized parsing. This contains the item's data. We still need to repeat (we're in a FOREACH) for additional items in feed.
+				echo $item_output_format; // spit out this feed item
 			}
 		} else {
 			echo __('<li>An error has occured; the feed is probably down. Try again later.</li>', 'kbwidgets');
@@ -235,6 +267,8 @@ function widget_kbrss_init() {
 			$newoptions[$number]['output_format'] = htmlspecialchars_decode( stripslashes($_POST["kbrss-output_format-$number"]) );
 			$newoptions[$number]['output_begin'] = htmlspecialchars_decode( stripslashes($_POST["kbrss-output_begin-$number"]) );
 			$newoptions[$number]['output_end'] = htmlspecialchars_decode( stripslashes($_POST["kbrss-output_end-$number"]) );
+			$newoptions[$number]['utf'] = ( "utf" == $_POST["kbrss-utf-$number"] ) ? "utf" : null;
+
 
 		}
 		if ( $options != $newoptions ) {
@@ -252,6 +286,8 @@ function widget_kbrss_init() {
 		#$output_begin = $options[$number]['output_begin'];
 		$output_end = htmlspecialchars($options[$number]['output_end'], ENT_QUOTES);
 		#$output_end = $options[$number]['output_end'];
+		$utf = $options[$number]['utf'];
+
 
 		if ( empty($items) || $items < 1 ){
 			$items = 10;
@@ -292,6 +328,10 @@ function widget_kbrss_init() {
 				<tr>
 					<td>Link title to feed URL? </td>
 					<td><input type="checkbox" name="kbrss-linktitle-<?php echo $number; ?>" id="kbrss-linktitle-<?php echo $number; ?>" value="link" <?php if ( "link" == $linktitle ) { echo 'checked="checked"'; } ?> /> </td>
+				</tr>
+				<tr>
+					<td>Convert feed to UTF-8?</td>
+					<td><input type="checkbox" name="kbrss-utf-<?php echo $number; ?>" id="kbrss-utf-<?php echo $number; ?>" value="utf" <?php if ( "utf" == $utf ) { echo 'checked="checked"'; } ?> /> </td>
 				</tr>
 				</table>
 				

@@ -14,6 +14,7 @@ The Sidebar Widgets plugin comes with an RSS widget, but you get no control over
 
 * Decide which RSS fields to display (as opposed to the default RSS widget, which limits you to link and title), and
 * Decide how to format the fields (it doesn't have to be a list if you don't want it to be).
+* Convert feeds to UTF-8 if desired. (Thanks to [Christoph Juergens](http://www.cjuergens.de/).)
 
 Be aware that it's called "advanced" for a reason. You need to know some HTML to use this fully. Also, please note that this is a widget, so you need to be using a widgets-enabled theme.
 
@@ -132,6 +133,10 @@ Check out the "Other Notes" tab.
 = Some of the available fields are arrays! =
 
 No problem. Check out the "Other Notes" tab.
+
+= The feed shows up as gobbledygook! =
+
+Try checking the "convert to UTF-8" option. (Thanks to [Christoph Juergens](http://www.cjuergens.de/).)
 
 = I have a question that isn't addressed here. =
 
