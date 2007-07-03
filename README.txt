@@ -113,6 +113,7 @@ None. This is a widget. If you are using pre-WP v2.2, you need to have the [widg
 = What can I do with this widget? =
 
 Lots of things. The built-in RSS widget will handle traditional headline-style feeds well, but this widget allows you to handle untraditional feeds just as easily. For example:
+
 * Weather. Weather.com provides RSS feeds, but you'll find more flexible feeds at [RSSweather.com](http://www.rssweather.com/).
 * Upcoming events. If you have an RSS feed of calendar data, give it a go.
 
