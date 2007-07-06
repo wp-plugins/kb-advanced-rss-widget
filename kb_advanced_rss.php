@@ -3,12 +3,21 @@
 Plugin Name: KB Advanced RSS Widget
 Description: Gives user complete control over how feeds are displayed.
 Author: Adam R. Brown
-Version: 1.6
+Version: 1.6.1
 Plugin URI: http://adambrown.info/b/widgets/category/kb-advanced-rss/
 Author URI: http://adambrown.info/
 */
 
 // Credit where it's due: This widget is a (heavily) modified version of the default RSS widget distributed with the Sidebar Widgets plugin. Kudos to those guys for figuring out the essentials.
+
+
+// SETTINGS
+define('KBRSS_HOWMANY', 20);	// max number of KB RSS widgets that you can have. Set to whatever you want. But don't put it higher than you need, or you may gum up your server.
+define('KBRSS_MAXITEMS', 10);	// max number of items you can display from a feed. Obviously, you can't get more than are in the actual feed.
+
+
+
+
 
 /* CHANGE LOG
 	1.0 	Original
@@ -31,11 +40,10 @@ Author URI: http://adambrown.info/
 	1.5.3	works with wp2.2.1. When will the developers quit screwing with the widgets api on every WP update? grrrrr
 	1.5.4	for real this time
 	1.6	option to convert feed from ISO-8859-1 to UTF-8. Thanks to Christoph Juergens (www.cjuergens.de)
+	1.6.1	new setting: easily change the max number of items a feed can have.
 
 */
 
-// SETTINGS
-define('KBRSS_HOWMANY', 20);	// max number of KB RSS widgets that you can have. Set to whatever you want. But don't put it higher than you need, or you may gum up your server.
 
 
 
@@ -81,7 +89,7 @@ function widget_kbrss_init() {
 		$num_items = (int) $options[$number]['items'];
 		$show_summary = $options[$number]['show_summary'];
 		
-		if ( empty($num_items) || $num_items < 1 || $num_items > 10 ) $num_items = 10;
+		if ( empty($num_items) || $num_items < 1 || $num_items > KBRSS_MAXITEMS ) $num_items = KBRSS_MAXITEMS;
 		$url = $options[$number]['url'];
 		
 		if ( empty($url) )
@@ -323,7 +331,7 @@ function widget_kbrss_init() {
 				</tr>
 				<tr>
 					<td><?php _e('Number of items to display:', 'kbwidgets'); ?> </td>
-					<td><select id="kbrss-items-<?php echo $number; ?>" name="kbrss-items-<?php echo $number; ?>"><?php for ( $i = 1; $i <= 10; ++$i ) echo "<option value='$i' ".($items==$i ? "selected='selected'" : '').">$i</option>"; ?></select></td>
+					<td><select id="kbrss-items-<?php echo $number; ?>" name="kbrss-items-<?php echo $number; ?>"><?php for ( $i = 1; $i <= KBRSS_MAXITEMS; ++$i ) echo "<option value='$i' ".($items==$i ? "selected='selected'" : '').">$i</option>"; ?></select></td>
 				</tr>
 				<tr>
 					<td>Link title to feed URL? </td>
