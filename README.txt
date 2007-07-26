@@ -139,6 +139,25 @@ No problem. Check out the "Other Notes" tab.
 
 Try checking the "convert to UTF-8" option. (Thanks to [Christoph Juergens](http://www.cjuergens.de/).)
 
+= I'd like to display only part of a field =
+
+For example, suppose your feed has a field called "image" that contains something like this:
+
+`<img src="http://example.com/img.jpg" />`
+
+and all you want is the URL. Obviously, you'll need to do customizations like this yourself. But here's a couple tips. First, you'll need to create a custom field. Let's call it "myfield" for now. Then you would put `^myfield$` into your widget options. Now, look in the widget file somewhere between lines 200 and 250 (as of version 1.7 of the widget) for this comment:
+
+`// CUSTOM FIELD TAGS`
+
+That's where you would insert something like this:
+
+`
+}elseif ($value_two[0] == 'myfield'){
+	$this_rss_thing = PUT SOME CODE HERE
+`
+
+Writing the actual code is up to you. Within your code, access the 'image' field using `$item['image']`
+
 = I have a question that isn't addressed here. =
 
 Be advised: **If you post your support questions as comments below, I probably won't see them.** Post your support questions at the [KB Advanced RSS plugin page](http://adambrown.info/b/widgets/category/kb-advanced-rss/) on my site if you want an answer.

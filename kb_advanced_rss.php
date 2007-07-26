@@ -3,7 +3,7 @@
 Plugin Name: KB Advanced RSS Widget
 Description: Gives user complete control over how feeds are displayed.
 Author: Adam R. Brown
-Version: 1.6.1
+Version: 1.7
 Plugin URI: http://adambrown.info/b/widgets/category/kb-advanced-rss/
 Author URI: http://adambrown.info/
 */
@@ -14,6 +14,8 @@ Author URI: http://adambrown.info/
 // SETTINGS
 define('KBRSS_HOWMANY', 20);	// max number of KB RSS widgets that you can have. Set to whatever you want. But don't put it higher than you need, or you may gum up your server.
 define('KBRSS_MAXITEMS', 10);	// max number of items you can display from a feed. Obviously, you can't get more than are in the actual feed.
+define('KBRSS_FORCECACHE', false); // if your widgets don't update after more than 1 hour, set this to true.
+define('KBRSS_WPMU', false); // set to TRUE if you're on WP-MU to add a few extra filters to what folks can put into their widgets.
 
 
 
@@ -41,7 +43,9 @@ define('KBRSS_MAXITEMS', 10);	// max number of items you can display from a feed
 	1.5.4	for real this time
 	1.6	option to convert feed from ISO-8859-1 to UTF-8. Thanks to Christoph Juergens (www.cjuergens.de)
 	1.6.1	new setting: easily change the max number of items a feed can have.
-
+	1.7	several:
+		- checking cache freshness is now an optional setting
+		- unless KBRSS_WPMU is true, fewer filters on what can be in widget options
 */
 
 
@@ -97,12 +101,16 @@ function widget_kbrss_init() {
 		
 		while ( strstr($url, 'http') != $url )
 			$url = substr($url, 1);
-		
-		// for some reason, the feeds don't always update like they should. So let's verify here that the cache is less than 1 hour (3600 seconds) old.
+
+
 		$md5 = md5($url);
-		$url_timestamp = get_option("rss_{$md5}_ts");
-		if ( $url_timestamp < ( time() - 3600 ) )
-			delete_option("rss_{$md5}");
+
+		// for some reason, the feeds don't always update like they should. So let's verify here that the cache is less than 1 hour (3600 seconds) old.
+		if ( KBRSS_FORCECACHE ){
+			$url_timestamp = get_option("rss_{$md5}_ts");
+			if ( $url_timestamp < ( time() - 3600 ) )
+				delete_option("rss_{$md5}");
+		}
 
 		// force deletion of cache (must be logged in as admin)
 		if ( 'flush' == $_GET['kbrss_cache'] ){
@@ -212,6 +220,8 @@ function widget_kbrss_init() {
 						$this_rss_thing = $title; // already defined (above)
 					}elseif ($value_two[0] == 'description'){
 						$this_rss_thing = $desc; // already defined (above)
+					// if you make a custom field tag, you would put it here:
+					// CUSTOM FIELD TAGS
 					}else{ // okay, user wants a non-standard element from the feed. This is why this plugin exists.
 						unset( $doozy ); // in case it was set on a previous iteration
 						unset( $this_rss_thing ); // same deal
@@ -270,7 +280,11 @@ function widget_kbrss_init() {
 			$newoptions[$number]['items'] = (int) $_POST["kbrss-items-$number"];
 			$newoptions[$number]['url'] = strip_tags(stripslashes($_POST["kbrss-url-$number"]));
 			$newoptions[$number]['icon'] = strip_tags(stripslashes($_POST["kbrss-icon-$number"]));
-			$newoptions[$number]['title'] = trim(strip_tags(stripslashes($_POST["kbrss-title-$number"])));
+			if (KBRSS_WPMU){
+				$newoptions[$number]['title'] = trim(strip_tags(stripslashes($_POST["kbrss-title-$number"])));
+			}else{
+				$newoptions[$number]['title'] = trim( stripslashes($_POST["kbrss-title-$number"]) );
+			}
 			$newoptions[$number]['linktitle'] = ( "link" == $_POST["kbrss-linktitle-$number"] ) ? "link" : null;
 			$newoptions[$number]['output_format'] = htmlspecialchars_decode( stripslashes($_POST["kbrss-output_format-$number"]) );
 			$newoptions[$number]['output_begin'] = htmlspecialchars_decode( stripslashes($_POST["kbrss-output_begin-$number"]) );
