@@ -119,6 +119,14 @@ Lots of things. The built-in RSS widget will handle traditional headline-style f
 
 Note that finding a suitable feed is up to you. It needs to be RSS, not just XML. (RSS is a sub-type of XML.) If you're not sure whether the feed will work with Wordpress's feed parser, then use the widget's built in debugger (see below) to check out the feed in question.
 
+= The feeds don't update =
+
+They update only once per hour (as coded in wordpress/includes/rss.php). If they don't update after more than a couple hours, look in the top of `kb_advanced_rss.php` for this line:
+
+`define('KBRSS_FORCECACHE', false);`
+
+and change it to true. This will manually delete the cache if it's more than 1 hour old. In newer versions of Wordpress, manually deleting the cache in this manner will cause a small error next time you load the page. Instead of displaying your feed, it will say "An error has occured, the feed is probably down." Just reload the page.
+
 = Which fields are available in the feed? Or: I need to debug the feed. =
 
 Begin by looking at the source code for the feed. But note that Wordpress parses feeds in ways that you might not expect. After you've installed my widget, you can add `?kbrss=http://path.to.feed/` to your blog's URL to see exactly which fields are available. (You'll need to be logged in as an admin to do this).
