@@ -125,7 +125,7 @@ They update only once per hour (as coded in wordpress/includes/rss.php). If they
 
 `define('KBRSS_FORCECACHE', false);`
 
-and change it to true. This will manually delete the cache if it's more than 1 hour old. In newer versions of Wordpress, manually deleting the cache in this manner will cause a small error next time you load the page. Instead of displaying your feed, it will say "An error has occured, the feed is probably down." Just reload the page.
+and change it to true. This will manually delete the cache if it's more than 1 hour old. In newer versions of Wordpress, manually deleting the cache in this manner might cause a small error next time you load the page. Instead of displaying your feed, it will say "An error has occured, the feed is probably down." Just reload the page.
 
 = Which fields are available in the feed? Or: I need to debug the feed. =
 

@@ -266,7 +266,7 @@ function widget_kbrss_init() {
 				echo $item_output_format; // spit out this feed item
 			}
 		} else {
-			echo __('<li>An error has occured; the feed is probably down. Try again later.</li>', 'kbwidgets');
+			echo __('<li>An error has occurred; the feed is probably down. Try again later.</li>', 'kbwidgets');
 		} 
 			echo $output_end;
 			echo $after_widget;
