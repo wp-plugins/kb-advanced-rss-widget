@@ -127,6 +127,15 @@ They update only once per hour (as coded in wordpress/includes/rss.php). If they
 
 and change it to true. This will manually delete the cache if it's more than 1 hour old. In newer versions of Wordpress, manually deleting the cache in this manner might cause a small error next time you load the page. Instead of displaying your feed, it will say "An error has occured, the feed is probably down." Just reload the page.
 
+= "An error has occured; the feed is probably down." =
+
+This widget relies on Wordpress's feed parsing abilities (look in `wordpress/includes/rss.php`). Wordpress grabs the requested feed then passes it to this widget for formatting. If you are seeing this error, it means one of two things:
+
+# The feed really is down. Wait a while and try again.
+# Wordpress's feed parser is screwed up. Try updating to the most recent version of Wordpress. If that doesn't work, file a Wordpress bug report in Trac.
+
+In the latter case, you may want to first try using the RSS widget that comes as a built-in widget. You'll probably get the same error there, since the KB RSS widget uses the exact same error-checking method.
+
 = Which fields are available in the feed? Or: I need to debug the feed. =
 
 Begin by looking at the source code for the feed. But note that Wordpress parses feeds in ways that you might not expect. After you've installed my widget, you can add `?kbrss=http://path.to.feed/` to your blog's URL to see exactly which fields are available. (You'll need to be logged in as an admin to do this).
@@ -146,6 +155,10 @@ No problem. Check out the "Other Notes" tab.
 = The feed shows up as gobbledygook! =
 
 Try checking the "convert to UTF-8" option. (Thanks to [Christoph Juergens](http://www.cjuergens.de/).)
+
+= I'd like to modify the feed before displaying it =
+
+For example, many people ask if they can modify the feed's <pubdate> format to display the date in a more user-friendly way. You certainly can, but this is a customization--meaning you need to code it yourselft. For tips, read this next section:
 
 = I'd like to display only part of a field =
 
