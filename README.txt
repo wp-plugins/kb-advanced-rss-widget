@@ -129,12 +129,13 @@ and change it to true. This will manually delete the cache if it's more than 1 h
 
 = "An error has occured; the feed is probably down." =
 
-This widget relies on Wordpress's feed parsing abilities (look in `wordpress/includes/rss.php`). Wordpress grabs the requested feed then passes it to this widget for formatting. If you are seeing this error, it means one of two things:
+This widget relies on Wordpress's feed parsing abilities (look in `wordpress/includes/rss.php`). Wordpress grabs the requested feed then passes it to this widget for formatting. If you are seeing this error, it means one of three things:
 
 1. The feed really is down. Wait a while and try again.
-1. Wordpress's feed parser is screwed up. Try updating to the most recent version of Wordpress. If that doesn't work, file a Wordpress bug report in Trac.
+1. Your host is blocking Wordpress from fetching the feed (very likely). [Read more here](http://wordpress.org/support/topic/120458?replies=24#post-602781).
+1. Wordpress's feed parser isn't working. Try updating to the most recent version of Wordpress. If that doesn't work, file a Wordpress bug report in Trac.
 
-In the latter case, you may want to first try using the RSS widget that comes as a built-in widget. You'll probably get the same error there, since the KB RSS widget uses the exact same error-checking method.
+In any case, you may want to first try using Wordpress's built-in RSS widget. If neither it nor my widget can display the feed, then you know for certain that it's one of those three reasons causing the failure. (You'll probably get the same error there, since the KB Advanced RSS widget uses the exact same error-checking method.)
 
 = Which fields are available in the feed? Or: I need to debug the feed. =
 
