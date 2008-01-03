@@ -1,20 +1,20 @@
 === KB Advanced RSS Widget ===
 Contributors: adamrbrown
 Donate link: http://adambrown.info/b/widgets/donate/
-Tags: widget, rss, feeds
+Tags: widget, rss, feeds, sidebar
 Requires at least: 2.0
-Tested up to: 2.2.1
+Tested up to: 2.3.2
 Stable tag: trunk
 
 Similar to the default RSS widget, but gives you complete control over how RSS feeds are parsed for your sidebar.
 
 == Description ==
 
-The Sidebar Widgets plugin comes with an RSS widget, but you get no control over how the feed shows up in your sidebar. Want more control? The KB Advanced RSS widget gives it to you. With it, you can
+WordPress comes with a default RSS widget, but you get no control over how the feed shows up in your sidebar. Want more control? The KB Advanced RSS widget gives it to you. With it, you can
 
-* Decide which RSS fields to display (as opposed to the default RSS widget, which limits you to link and title), and
-* Decide how to format the fields (it doesn't have to be a list if you don't want it to be).
-* Convert feeds to UTF-8 if desired. (Thanks to [Christoph Juergens](http://www.cjuergens.de/).)
+* Decide which RSS fields to display (as opposed to the default RSS widget, which limits you to link and title);
+* Decide how to format the fields (it doesn't have to be a list if you don't want it to be);
+* Convert feeds to UTF-8 if desired (thanks to [Christoph Juergens](http://www.cjuergens.de/)).
 
 Be aware that it's called "advanced" for a reason. You need to know some HTML to use this fully. Also, please note that this is a widget, so you need to be using a widgets-enabled theme.
 
@@ -34,9 +34,17 @@ If you want more (up to 9) KB Advanced RSS widgets, scroll down and increase the
 
 Check out the "Other Notes" tab for details usage instructions.
 
+= Support =
+
+Be advised: **If you post your support questions as comments below, I probably won't see them.** Post your support questions at the [KB Advanced RSS plugin page](http://adambrown.info/b/widgets/category/kb-advanced-rss/) on my site if you want an answer.
+
+== Screenshots ==
+
+You can see examples at the [KB Advanced RSS plugin page](http://adambrown.info/b/widgets/kb-advanced-rss/).
+
 == Other Notes ==
 
-=Instructions=
+**Instructions**
 
 Background before we continue: Every RSS feed contains a number of items (e.g. headlines). Each item contains a variety of elements; at a minimum, each item usually has a title, a link, and a description.
 
@@ -44,10 +52,10 @@ Background before we continue: Every RSS feed contains a number of items (e.g. h
 
 To show how this widget works, let's use it to parse an RSS feed in exactly the way that the default RSS widget does. 
 1. The default widget begins with `<ul>` (to make the feed items a list). 
-1. Then, it prints out this line for each item in the feed: `<li><a href="LINK" title="DESCRIPTION">TITLE</a></li>`. 
+1. Then, it prints out the following line for each item in the feed: `<li><a href="LINK" title="DESCRIPTION">TITLE</a></li>`. 
 1. Finally, it closes the feed with `</ul>` (to end the list).
 
-The KB Advanced RSS widget has three options on the widgets admin screen. First, you enter the HTML that you want to have precede the widget. In this case, that's `<ul>`. Then, you enter the HTML that should follow the widget. Clearly, that's `</ul>` here. Then, you tell it how to parse each item in the feed, using `^ELEMENT$` to specify elements in the feed. To replicate the basic, built-in RSS widget, you would write this: `<li><a href="^link$" title="^description$">^title$</a></li>`. Easy, isn't it?
+By default, the KB Advanced RSS widget will do exactly the same thing. But you can change any or all of these three things using the widgets interface. First, you enter the HTML that you want to have precede the widget. In this case, that's `<ul>`. Then, you enter the HTML that should follow the widget. That's `</ul>` here. Then, you tell it how to parse each item in the feed, using `^ELEMENT$` to specify elements in the feed. To replicate the basic, built-in RSS widget, you would write this: `<li><a href="^link$" title="^description$">^title$</a></li>`. Easy, isn't it?
 
 **Example 2: Adding another element**
 
@@ -59,11 +67,27 @@ If you do this, my plugin will spit out a copy of the PHP array that Wordpress p
 
 **Example 3: Trimming an element**
 
-Suppose you want to display each item's description, but some of the descriptions are way too long. If you wanted to trim the description to 50 characters (or any other number), write `^description%%50$`. Note that the %%50 comes before the $. (You can do this to anything, not just the description.) If you go the [plugin's page](http://adambrown.info/b/widgets/category/kb-advanced-rss/), you'll see that I used this technique on the example at the bottom of the sidebar.
+Suppose you want to display each item's description, but some of the descriptions are way too long. If you wanted to trim the description to 50 characters (or any other number), write `^description[opts:trim=50]$`. Note that the `[opts:...]` comes before the `$`. If you go the [plugin's page](http://adambrown.info/b/widgets/category/kb-advanced-rss/), you'll see that I used this technique on the example at the bottom of the sidebar.
 
-**Example 4: What if an RSS item contains an array of elements?**
+You can also trim each item from the left. Suppose that each item's title in your feed starts with the word "News flash!" and you want to get rid of it. Trim the first 11 characters off the title like this: `^title[opts:ltrim=11]$`.
 
-Okay, now we've moved into the really advanced stuff. You probably won't follow this next part unless you use the ?kbrss= thing from example 2 first and see what I'm talking about. Note that some of the items in Yahoo's feed contain something that looks something like this (it will look slightly different depending on what version of WordPress you're using):
+If, after removing the first 11 characters, you also want to trim the title to only 10 characters total, you would write this: `^title[opts:ltrim=11&trim=10]$`.
+
+**Example 4: Displaying dates**
+
+Most feeds will use a `pubdate` fields that produces something ugly like this:
+
+`[pubdate] => Thu, 20 Dec 2007 19:32:38 +0000`
+
+To modify that, use the `date` option, using [PHP date syntax](http://www.php.net/date), like so:
+
+`^pubdate[opts:date=F jS Y]$`
+
+The `F jS Y` is PHP date syntax for something like `December 20th, 2007`.
+
+**Example 5: What if an RSS item contains an array of elements?**
+
+Okay, now we've moved into the really advanced stuff. You probably won't follow this next part unless you use the ?kbrss= thing from example 2 first and see what I'm talking about. Note that some of the items in Yahoo's feed contain something that looks something like the following (it will look slightly different depending on what version of WordPress you're using):
 
 `[media:content] => Array
        (
@@ -94,17 +118,16 @@ Here's another example of a feed containing an array, but with a twist. When cer
    [guid] => http://adambrown.info/b/widgets/kb-countdown/
 `
 
-Now, if you only wanted to list the first category, you would write `^categories=>0$`, as above. But what if you want to loop through all the categories and print all of them? Then write this: `^categories||BEFORE||AFTER$`, where BEFORE and AFTER are the html you want to appear before and after each element in the array. For example, you might write this: `^categores||<li>||</li>$`, or more properly, this: `<ul>^categories||<li>||</li>$</ul>`.
+Now, if you only wanted to list the first category, you would write `^categories=>0$`, as above. But what if you want to loop through all the categories and print all of them? Then write this: `^categories[opts:loop=true&beforeloop=BEFORE&afterloop=AFTER]$`, where BEFORE and AFTER are the html you want to appear before and after each element in the array. For example, you might write this: `^categores[opts:loop=true&beforeloop=<li>&afterloop=</li>]$`, or more properly, this: `<ul>^categores[opts:loop=true&beforeloop=<li>&afterloop=</li>]$</ul>`.
 
-**Support**
+Okay, that's the basics. Check the FAQ for further details.
 
-Be advised: **If you post your support questions as comments below, I probably won't see them.** Post your support questions at the [KB Advanced RSS plugin page](http://adambrown.info/b/widgets/category/kb-advanced-rss/) on my site if you want an answer.
-
-== Screenshots ==
-
-You can see examples at the [KB Advanced RSS plugin page](http://adambrown.info/b/widgets/kb-advanced-rss/).
 
 == Frequently Asked Questions ==
+
+= How do I use this thing? =
+
+Check out the "Other Notes" tab, above, for instructions.
 
 = What code do I need to place in my sidebar? =
 
@@ -121,7 +144,7 @@ Note that finding a suitable feed is up to you. It needs to be RSS, not just XML
 
 = The feeds don't update =
 
-They update only once per hour (as coded in wordpress/includes/rss.php). If they don't update after more than a couple hours, look in the top of `kb_advanced_rss.php` for this line:
+They update only once per hour (as coded in `wordpress/includes/rss.php`). If they don't update after more than a couple hours, look in the top of `kb_advanced_rss.php` for this line:
 
 `define('KBRSS_FORCECACHE', false);`
 
@@ -136,6 +159,8 @@ This widget relies on Wordpress's feed parsing abilities (look in `wordpress/inc
 1. Wordpress's feed parser isn't working. Try updating to the most recent version of Wordpress. If that doesn't work, file a Wordpress bug report in Trac.
 
 In any case, you may want to first try using Wordpress's built-in RSS widget. If neither it nor my widget can display the feed, then you know for certain that it's one of those three reasons causing the failure. (You'll probably get the same error there, since the KB Advanced RSS widget uses the exact same error-checking method.)
+
+Some users of this widget have suggested solutions to this problem. Check out the comments on [this blog post](http://adambrown.info/b/widgets/2007/08/20/an-error-has-occured-the-feed-is-probably-down/).
 
 = Which fields are available in the feed? Or: I need to debug the feed. =
 
@@ -159,26 +184,17 @@ Try checking the "convert to UTF-8" option. (Thanks to [Christoph Juergens](http
 
 = I'd like to modify the feed before displaying it =
 
-For example, many people ask if they can modify the feed's <pubdate> format to display the date in a more user-friendly way. You certainly can, but this is a customization--meaning you need to code it yourselft. For tips, read this next section:
-
-= I'd like to display only part of a field =
-
 For example, suppose your feed has a field called "image" that contains something like this:
 
 `<img src="http://example.com/img.jpg" />`
 
-and all you want is the URL. Obviously, you'll need to do customizations like this yourself. But here's a couple tips. First, you'll need to create a custom field. Let's call it "myfield" for now. Then you would put `^myfield$` into your widget options. Now, look in the widget file somewhere between lines 200 and 250 (as of version 1.7 of the widget) for this comment:
+and all you want is the URL. Obviously, you'll need to do customizations like this yourself. But here's a couple tips. Usually, the easiest route is to create your own option. Write something like this: `^image[opts:extractUrl=1]$`.
 
-`// CUSTOM FIELD TAGS`
+Next, open up the plugin file and search for `function item_cleanup`. Insert your code in there. Something like this:
 
-That's where you would insert something like this:
-
-`
-}elseif ($value_two[0] == 'myfield'){
-	$this_rss_thing = PUT SOME CODE HERE
-`
-
-Writing the actual code is up to you. Within your code, access the 'image' field using `$item['image']`
+`if (1==$extractURL){
+...
+}`
 
 = I have a question that isn't addressed here. =
 

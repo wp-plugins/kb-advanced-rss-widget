@@ -3,7 +3,7 @@
 Plugin Name: KB Advanced RSS Widget
 Description: Gives user complete control over how feeds are displayed.
 Author: Adam R. Brown
-Version: 1.7
+Version: 2.0
 Plugin URI: http://adambrown.info/b/widgets/category/kb-advanced-rss/
 Author URI: http://adambrown.info/
 */
@@ -15,7 +15,9 @@ Author URI: http://adambrown.info/
 define('KBRSS_HOWMANY', 20);	// max number of KB RSS widgets that you can have. Set to whatever you want. But don't put it higher than you need, or you may gum up your server.
 define('KBRSS_MAXITEMS', 10);	// max number of items you can display from a feed. Obviously, you can't get more than are in the actual feed.
 define('KBRSS_FORCECACHE', false); // if your widgets don't update after more than 1 hour, set this to true.
-define('KBRSS_WPMU', false); // set to TRUE if you're on WP-MU to add a few extra filters to what folks can put into their widgets.
+
+define('KBRSS_WPMU', false); // set to TRUE if you're on WP-MU to add a few extra filters to what folks can put into their widgets. Note that it's up to
+				// you to determine whether this plugin is really secure enough for WPMU, though.
 
 
 
@@ -46,6 +48,7 @@ define('KBRSS_WPMU', false); // set to TRUE if you're on WP-MU to add a few extr
 	1.7	several:
 		- checking cache freshness is now an optional setting
 		- unless KBRSS_WPMU is true, fewer filters on what can be in widget options
+	2.0	Rewritten for better performance and easier customization. Now written as a class. Also uses a new syntax in the widget admin. See FAQ.
 */
 
 
@@ -53,223 +56,429 @@ define('KBRSS_WPMU', false); // set to TRUE if you're on WP-MU to add a few extr
 
 
 
-// okay, settings are done. Stop editing.
+// okay, settings are done. Stop editing unless you know what you're doing.
 
 
 
-/* NOTE TO PEOPLE MODIFYING THIS PLUGIN:
-	My apologies for the messiness of this code. I originally wrote it for my own uses, adding new options over time.
-	If I had started with the intention of writing something that would do everything that this does now,
-	I'm sure I could have written a much cleaner plugin.
-	As it stands, this is some horrendous coding to figure out. Good luck.
-	If you make modifications that others might appreciate, post a comment on the plugin's page.
-	thanks
-*/
 
 
 
 
 function widget_kbrss_init() {
 
-	// replicate a PHP 5 function for users of older versions
+	// prevent fatals
+	if ( !function_exists('register_sidebar_widget') )
+		return;
+	if ( class_exists('kb_advRss') )
+		return;
+
+	// replicate a PHP 5 function for our PHP 4 friends
 	if ( !function_exists('htmlspecialchars_decode') ){
 	    function htmlspecialchars_decode($text){
 	        return strtr($text, array_flip(get_html_translation_table(HTML_SPECIALCHARS)));
 	    }
 	}
-
-	// prevent fatals
-	if ( !function_exists('register_sidebar_widget') )
-		return;
-		
-
-	function widget_kbrss($args, $number = 1) {
-		if ( file_exists(ABSPATH . WPINC . '/rss.php') )
-			require_once(ABSPATH . WPINC . '/rss.php');
-		else
-			require_once(ABSPATH . WPINC . '/rss-functions.php');
-		extract($args);
-		$options = get_option('widget_kbrss');
-		$num_items = (int) $options[$number]['items'];
-		$show_summary = $options[$number]['show_summary'];
-		
-		if ( empty($num_items) || $num_items < 1 || $num_items > KBRSS_MAXITEMS ) $num_items = KBRSS_MAXITEMS;
-		$url = $options[$number]['url'];
-		
-		if ( empty($url) )
-			return;
-		
-		while ( strstr($url, 'http') != $url )
-			$url = substr($url, 1);
-
-
-		$md5 = md5($url);
-
-		// for some reason, the feeds don't always update like they should. So let's verify here that the cache is less than 1 hour (3600 seconds) old.
-		if ( KBRSS_FORCECACHE ){
-			$url_timestamp = get_option("rss_{$md5}_ts");
-			if ( $url_timestamp < ( time() - 3600 ) )
-				delete_option("rss_{$md5}");
-		}
-
-		// force deletion of cache (must be logged in as admin)
-		if ( 'flush' == $_GET['kbrss_cache'] ){
-			global $userdata;
-			if ( $userdata->user_level >= 7 ){
-				delete_option("rss_{$md5}");
-			}
-		}
-
-
 	
-		$rss = @fetch_rss($url);	// @ prevents errors after deleting the option
-		$link = wp_specialchars(strip_tags($rss->channel['link']), 1);
-		
-		while ( strstr($link, 'http') != $link )
-			$link = substr($link, 1);
-		
-		$desc = wp_specialchars(strip_tags(html_entity_decode($rss->channel['description'], ENT_QUOTES)), 1);
-		$title = $options[$number]['title'];
-		
-		/*if ( empty($title) )
-			$title = htmlentities(strip_tags($rss->channel['title']));
-		
-		if ( empty($title) )
-			$title = $desc;
-		
-		if ( empty($title) )
-			$title = __('Unknown Feed', 'kbwidgets'); */
-		
-		$output_format = $options[$number]['output_format'];
-		$output_begin = $options[$number]['output_begin'];
-		$output_end = $options[$number]['output_end'];
-		$utf = $options[$number]['utf'];
+	// make it work all the way back to WP 2.0:
+	if (!function_exists('attribute_escape')){
+		function attribute_escape($text) {
+			$safe_text = wp_specialchars($text, true);
+			return apply_filters('attribute_escape', $safe_text, $text);
+		}
+	}
 
+	// class for the front end: displaying the widget on your site.
+	class kb_advRss{
+	
+		// options
+		var $title; // displayed above widget
+		var $linktitle; // link title to source URL?
+		var $num_items; // num of items from RSS feed to display
+		var $url; // url of RSS feed
+		var $output_begin; // what HTML will we precede the feed items with? (e.g. <ul>)
+		var $output_format; // how will we display each feed item? (e.g. <li><a class="kbrsswidget" href="^link$" title="^description$">^title$</a></li>)
+		var $output_end; // what HTML will we follow the feed items with? (e.g. </ul>)
+		var $utf; // convert the feed to UTF?
+		var $icon; // URL to an RSS icon to display
 		
-		if ( empty($output_format) )
-			$output_format = '<li><a class="kbrsswidget" href="^link$" title="^description$">^title$</a></li>';
-
-
-		$url = wp_specialchars(strip_tags($url), 1);
-
-		if ( ( "link" == $options[$number]['linktitle'] ) && $title )
-			$title = "<a href='$link'>$title</a>";
+		// data used internally
+		var $number; // which widget is this? You can use multiple widgets, so we need to know which we're working with here.
+		var $md5; // md5 hash of url
+		var $md5_option; // name of option where we cache the feed
+		var $md5_option_ts; // name of option where we save the cache's timestamp
 		
-		$icon = $options[$number]['icon'];
+		// rss channel info
+		var $link; // link to origin website
+		var $desc; // feed's description
 		
-		if ( '' != $icon )
-			$title = "<a class='kbrsswidget' href='$url' title='Syndicate this content'><img width='14' height='14' src='$icon' alt='RSS' /></a> $title";
-		/* else
-			$title = "$title"; */
+		// rss item info
+		var $tokens; // holds tokens like ^link$, ^title$, etc.
+		var $items; // holds the items output as a string
 
+		// make sure magpie is loaded
+		function load_magpie(){
+			if (function_exists('fetch_rss'))
+				return true;
 
-			echo $before_widget;
-			if ( '' != $title )
-				print($before_title . $title . $after_title);
-			echo $output_begin;
+			if (file_exists(ABSPATH . WPINC . '/rss.php') )
+				require_once(ABSPATH . WPINC . '/rss.php');
+			elseif (file_exists(ABSPATH . WPINC . '/rss-functions.php') )
+				require_once(ABSPATH . WPINC . '/rss-functions.php');
+
+			if (function_exists('fetch_rss'))
+				return true;
+			return false;
+		}
 		
-		/* HERE COMES SOME TRULY HIDEOUS CODE. SORRY. AT LEAST IT WORKS, RIGHT? */
-		
-		if ( is_array( $rss->items ) ) {
-			$rss->items = array_slice($rss->items, 0, $num_items);
-					
-			// prepare the output. e.g. $output_format = '<li>^title$ and ^description$</li>';
-			$output_format_one = explode('^', $output_format);	// e.g. = array( '<li>', 'title$ and', 'description$</li>';
-			$output_format_two = array();
-			foreach($output_format_one as $value_one){
-				$output_format_two[] = explode('$',$value_one);	// e.g. array(  array('<li>') ,  array('title', ' and') ,  array('description', '</li>')  );
+		// load up our options (or defaults)
+		// can also set options manually via an array of args
+		function load_options( $args = false ){
+			if (is_array($args)){
+				$this->number = 0;
+				$options[0]['url'] = $args[0];
+				$options[0]['num_items'] = $args[1];
+				$options[0]['output_format'] = $args[2];
+				$options[0]['utf'] = $args[3];
+			}else{
+				$options = get_option('widget_kbrss');
 			}
-			unset($output_format_two[0]);	// e.g. array(    array('title', ' and') ,    array('description', '</li>')    );
-			// done preparing output format. Note that each $output_format_two[][0] contains a tag to replace from the feed (title, description). We use this later.
+			
+			// title to display above widget
+			$this->title = $options[$this->number]['title'];
+			$this->linktitle = $options[$this->number]['linktitle'];
 
-			// loop through each item in feed
-			foreach ($rss->items as $item ) {
-				while ( strstr($item['link'], 'http') != $item['link'] )
-					$item['link'] = substr($item['link'], 1);
-				$link = wp_specialchars(strip_tags($item['link']), 1);
-				$title = wp_specialchars(strip_tags($item['title']), 1);
-				if ( empty($title) )
-					$title = __('Untitled');
-				$desc = '';
-				if ( $show_summary ) {
-					$summary = '<div class="kbrssSummary">' . $item['description'] . '</div>';
-				} else {
-					$desc = str_replace(array("\n", "\r"), ' ', wp_specialchars(strip_tags(html_entity_decode($item['description'], ENT_QUOTES)), 1));
-					$summary = '';
-				}
+			// number of feed items to display
+			$this->num_items = (int) $options[$this->number]['items'];
+			if ( empty($this->num_items) || ($this->num_items < 1) || ($this->num_items > KBRSS_MAXITEMS) )
+				$this->num_items = KBRSS_MAXITEMS;
+			
+			// feed URL
+			$this->url = $options[$this->number]['url'];
+			if ( empty($this->url) || false===strpos($this->url,'http') )
+				return false;
 
-				// prepare the customized parsing
-				$item_output_format = $output_format;
-				
-				// okay, this is embarassingly ugly for a little bit.
-				// loop through each requested element (recall that we're in the middle of another loop right now)
-				foreach($output_format_two as $value_two){
-					$value_two[0] = strtolower($value_two[0]);
-					$replaceme = $value_two[0];
+			// If the feed URL is given as "feed:http://example.com/rss", lop off the "feed:' part:
+			while ( strstr($this->url, 'http') != $this->url )
+				$url = substr($url, 1);
 
-					if ( strpos( $value_two[0], '%%' ) ){	// e.g. ^description%%100$ to trim to 100 chars
-						$trim_this_rss_thing = explode( '%%', $value_two[0] );
-						$value_two[0] = $trim_this_rss_thing[0];
-					}	// we'll do the actual trimming in 20 or 30 lines
-					
-					// let's figure out what exactly the user wants from the feed.
-					// at end, $this_rss_thing will contain the requested feed element.
-					if ($value_two[0] == 'link'){
-						$this_rss_thing = $link; // already defined (above)
-					}elseif ($value_two[0] == 'title'){
-						$this_rss_thing = $title; // already defined (above)
-					}elseif ($value_two[0] == 'description'){
-						$this_rss_thing = $desc; // already defined (above)
-					// if you make a custom field tag, you would put it here:
-					// CUSTOM FIELD TAGS
-					}else{ // okay, user wants a non-standard element from the feed. This is why this plugin exists.
-						unset( $doozy ); // in case it was set on a previous iteration
-						unset( $this_rss_thing ); // same deal
-						// case 1: Element contains an array, and user wants each element of the array.
-						if ( strpos( $value_two[0], '||' ) ){	//  e.g. Write: ^categories||<li>||</li>$. we only require the first ||, second is optional.
-							$doozy = explode( '||', $value_two[0] ); // break up user's request by '||'
-							foreach( $item[ $doozy[0] ] as $anotherdoozy ){ // in example, $doozy[0] is "categories" element of feed
-								$this_rss_thing .= $doozy[1];	// e.g. <li> in this example
-								$this_rss_thing .= $anotherdoozy;	// not stripping tags or using wp_specialchars
-								$this_rss_thing .= $doozy[2];	// e.g. </li> in this example. Might be blank.
+			// for caching
+			$this->md5 = md5($this->url);
+			$this->md5_option = 'rss_' . $this->md5;
+			$this->md5_option_ts = $this->md5_option . '_ts';
+			
+			// formatting options
+			$this->output_begin = $options[$this->number]['output_begin'];
+			$this->output_format = $options[$this->number]['output_format'];
+			$this->output_end = $options[$this->number]['output_end'];
+			$this->utf = $options[$this->number]['utf'];
+			
+			// icon?
+			$this->icon = $options[$this->number]['icon'];
+			
+			// default format:
+			if ( empty($this->output_format) )
+				$this->output_format = '<li><a class="kbrsswidget" href="^link$" title="^description$">^title$</a></li>';
+
+			return true;
+		}
+		
+		// manually flush the cache (two ways to do it)
+		function force_cache(){
+			// METHOD 1: if logged in as admin, you can force a cache flush by adding ?kbrss_cache=flush to your blog URL
+			global $userdata;
+			if ( ('flush' == $_GET['kbrss_cache']) && ($userdata->user_level >= 7) ){
+				delete_option( $this->md5_option );
+				return;
+			}
+			// METHOD 2: If KBRSS_FORCECACHE is true, we'll flush the cache every hour. (WP should flush hourly on its own, though.)
+			if ( ! KBRSS_FORCECACHE )
+				return;
+			$cachetime = get_option( $this->md5_option_ts );
+			if ( $cachetime < ( time() - 3600 ) )
+				delete_option( $this->md5_option );
+		}
+		
+		// fetch the feed and format it for display (but don't call this function directly; use one of the wrappers)
+		function get_feed(){
+			$rss = @fetch_rss($this->url);
+			
+			// PART I: PREPARE CHANNEL INFORMATION:
+
+			// link to RSS's origin site
+			$this->link = clean_url(strip_tags($rss->channel['link']));
+			while( strstr($this->link, 'http') != $this->link )
+				$this->link = substr( $this->link, 1 );
+
+			// feed description
+			$this->desc = attribute_escape(strip_tags(html_entity_decode($rss->channel['description'], ENT_QUOTES)));
+
+			// clean up url before displaying to screen
+			$this->url = clean_url(strip_tags($this->url));
+			
+			// link title to source URL?
+			if ( ('link'==$this->linktitle) && $this->title )
+				$this->title = '<a href="'. $this->link .'">'. $this->title .'</a>';
+			
+			// add icon to title, if necessary
+			if ('' != $this->icon)
+				$this->title = '<a class="kbrsswidget" href="'.$this->url.'" title="Syndicate this content"><img width="14" height="14" src="'.$this->icon.'" alt="RSS" style="background:orange;color:white;" /></a> '.$this->title;
+			
+			// PART II: PREPARE ITEM INFORMATION
+			if ( is_array($rss->items) && !empty( $rss->items ) ){
+				$rss->items = array_slice($rss->items, 0, $this->num_items);
+
+				// initialize. Critical if there are multiple kb rss widgets.
+				$this->items = '';
+
+				// loop through each item in the feed
+				foreach( $rss->items as $item ){
+					// loop through each token that we need to find
+					$find = array(); // initialize
+					foreach( $this->tokens as $token ){
+						$replace = ''; // initialize
+						// how to display this field?
+						if ( is_array($item[ $token['field'] ]) ){
+							// display a subfield:
+							if ( $token['opts']['subfield'] ){
+								$replace = $item[ $token['field'] ][ $token['opts']['subfield'] ];
+								$replace = $this->item_cleanup( $replace, $token['opts'] );
+							// loop through items in this field:
+							}elseif ( $token['opts']['loop'] ) {
+								foreach( $item[ $token['field'] ] as $subfield ){
+									$subfield = $this->item_cleanup( $subfield, $token['opts'] );
+									$replace .= $token['opts']['beforeloop'] . $subfield . $token['opts']['afterloop'];
+									}
 							}
-						// case 2: Element contains an array, and user wants a particular element from the array.
-						}elseif( strpos( $value_two[0], '=>' ) ){	// E.g. "media:content" => "url" from Yahoo. Write: ^media:content=>url$
-							$doozy = explode( '=>', $value_two[0] ); // gives [0] = "media:content" and [1] = "url"
-							$this_rss_thing = $item[ $doozy[0] ][ $doozy[1] ];	// not stripping tags or anything
-						// case 3 (simplest): Element just contains a string.
 						}else{
-							# $this_rss_thing = wp_specialchars( strip_tags( $item[$value_two[0]] ), 1); // prevents images from showing up properly.
-							$this_rss_thing = $item[$value_two[0]]; // grab the element.
+							$replace = $item[ $token['field'] ];
+							$is_url = ('link'==$token['slug']) ? true : false;
+							$replace = $this->item_cleanup( $replace, $token['opts'], $is_url );
 						}
+						$find[ $token['slug'] ] = $replace;
 					}
+					$keys = array_keys( $find );
+					$vals = array_values( $find );
+					$this->items .= str_replace( $keys, $vals, $this->output_format );
+				}
+				
+				if ($this->utf)
+					$this->items = utf8_encode( $this->items );
 
-					// trim, if requested
-					if ( is_array( $trim_this_rss_thing ) ){
-						if ( 0 < $trim_this_rss_thing[1] ){
-							$this_rss_thing = substr( $this_rss_thing, 0, $trim_this_rss_thing[1] );
-						}
-					}
-					unset( $trim_this_rss_thing );
-					// end trimming
+			}else{ // no feed, display an error message
+				if ( '<li' === substr( $this->output_format, 0, 3 ) )
+					$this->items = '<li>' . __( 'An error has occurred; the feed is probably down. Try again later.' ) . '</li>';
+				else
+					$this->items = __( 'An error has occurred; the feed is probably down. Try again later.' );
+			}
+		}
+		// helper for the items loop in previous function. This is where we implement most of the options. This is the part of the plugin to edit if you
+		// want to add a new functionality. See the FAQ for details.
+		function item_cleanup($text,$opts=false,$url=false){
+			// some cleanup for security:
+			if ($url)
+				$text = clean_url(strip_tags($text));
+			else
+				$text = str_replace(array("\n", "\r"), ' ', attribute_escape(strip_tags(html_entity_decode($text, ENT_QUOTES))));
+			// apply opts, if given:
+			if (!is_array($opts))
+				return $text;
+			extract($opts);
+			
+			// date formatting on pubdate
+			if ($date){
+				$text = $this->make_date($text,$date);
+			}
+			
+			/////////////////////////////////////////////////////////////////////////////////////////////
+			///////////////////////////////// CUSTOMIZATIONS /////////////////////////////////////////
+			/////////////////////////////////////////////////////////////////////////////////////////////
+			// If you want to write customizations, but them here. The variable to modify is $text. See the FAQ.
+			/////////////////////////////////////////////////////////////////////////////////////////////
+			/////////////////////////////////////////////////////////////////////////////////////////////
 
-					// okay, we have feed content in $this_rss_thing. Let's substitute feed contact in place of the "^element$" tag.
-					// Note that this occurs in a loop, so this replace function happens once for each tag.
-					$item_output_format = str_replace('^'.$replaceme.'$', $this_rss_thing, $item_output_format);
+			// left trimming:
+			$ltrim = (is_numeric($ltrim) && 0<$ltrim) ? (int) $ltrim : null;
+			if (is_int($ltrim))
+				$text = substr( $text, $ltrim );
+
+			// length trimming (do after left trimming)
+			$trim = (is_numeric($trim) && 0<$trim) ? (int) $trim : null;
+			if (is_int($trim))
+				$text = substr( $text, 0, $trim );
+
+			return $text;
+		}
+		// another helper
+		function make_date($string, $format){
+			$time = strtotime( $string );
+			if (false===$time || -1===$time)
+				return $string;
+			return date( $format, $time );
+		}
+		
+		/* 	scans widget's "output format" option to figure out which "tokens" (item fields) to display, and how.
+			returns an array of tokens, each of which is stored as an array, like this:
+				array(
+					array(
+						'slug'=> token, exactly as written in widget's options , 
+						'field'=> name of field in rss--might be the same as 'slug', 
+						'opts'=>array of options, or NULL if no options.
+					),
+					// a basic example:
+					array(
+						'slug'=>'^title$', 	// this is what you write in widget's options to display title
+						'field'=>'title', 	// this is the name of the field: "title"
+						'opts'=>null		// no options (e.g. trimming) specified
+					),
+					// (the following examples omit the keys to keep it brief; pretend the keys are still there)
+					array('^description$', 'description', null),	// display the item's description
+					array('^description%%75$', 'description', array('trim'=>75)),	// display the item's description, trimmed to 75 chars max
+					array('^dc=>creator$', 'dc', array('subfield'=>'creator')),		// displays the item's dc:creator field
+					array('^dc=>creator&&5$', 'dc', array('subfield'=>'creator', 'trim'=>5)),		// displays the item's dc:creator field, trimmed to 5 chars max
+					// a complicated example: looping fields in an array. this will loop through all fields in "categories" array (this was useful on old versions of WP)
+					array(
+						'slug'=>'^categories||<li>||</li>$', 
+						'field'=>'categories', 
+						'opts'=>array(
+							'loop'=>array(
+								'before'=>'<li>', 
+								'after'=>'</li>'
+							)
+						) 
+					),
+				); 	
+				// done with examples. 	*/		
+		function detect_tokens(){
+			if (''==$this->output_format)
+				return false;
+			preg_match_all( '~\^([^$]+)\$~', $this->output_format, $matches, PREG_SET_ORDER);
+			/* $matches will look something like this
+				[0] => Array        (		[0] => ^title$,	[1] => title		)
+				[1] => Array        (		[0] => ^description%%75$,	[1] => description%%75		)	*/
+			if (!is_array($matches) || empty($matches))
+				return false;
+			$tokens = array();
+			$used = array();
+			foreach( $matches as $match ){
+				// if they use the same token twice, let's not insert it into the tokens array twice:
+				if ( in_array($match[0], $used) )
+					continue;
+				$used[] = $match[0];
+
+				// initialize (critical)
+				$token = array();
+				$token['slug'] = $match[0];
+				$token['opts'] = array(); // important
+
+				// THE NEW SYNTAX: ^fieldname[opts:trim=50&ltrim=30&date=]$
+				if ( strpos($match[1], '[opts:') ){
+					$explode = explode( '[opts:', $match[1], 2 );
+					$match[1] = $explode[0];
+					$opts = substr( $explode[1], 0, -1 ); // cut off ] at the end
+					parse_str( $opts, $options );
+					$token['opts'] = array_merge( $token['opts'], $options );
 				}
 
-				// convert to utf 8 if requested
-				if ( $utf )
-					$item_output_format = utf8_encode( $item_output_format );
+				// BACKWARDS COMPATIBILITY: LOOK FOR %%, =>, ||
 
-				// done with customized parsing. This contains the item's data. We still need to repeat (we're in a FOREACH) for additional items in feed.
-				echo $item_output_format; // spit out this feed item
+				// detect options: Trim? %%
+				if ( strpos($match[1], '%%') ){
+					$explode = explode( '%%', $match[1] );
+					$match[1] = $explode[0];
+					$token['opts']['trim'] = $explode[1];
+				}
+
+				// detect options: displaying arrays
+				if ( strpos($match[1], '=>') ){
+					$explode = explode( '=>', $match[1], 2);
+					$match[1] = $explode[0];
+					$token['opts']['subfield'] = $explode[1];
+				}elseif( strpos($match[1], '||') ){
+					$explode = explode( '||', $match[1], 3);
+					$match[1] = $explode[0];
+					$token['opts']['loop'] = true;
+					$token['opts']['beforeloop'] = $explode[1];
+					$token['opts']['afterloop'] = $explode[2];
+				}
+
+				$token['field'] = $match[1];
+
+				// all done. add to master array
+				$tokens[] = $token;
 			}
-		} else {
-			echo __('<li>An error has occurred; the feed is probably down. Try again later.</li>', 'kbwidgets');
-		} 
-			echo $output_end;
-			echo $after_widget;
+
+			if (empty($tokens))
+				return false;
+
+			$this->tokens = $tokens;
+			return true;
+		}
+
+		// workhorse function. Grabs the feed, prepares it, etc. Does everything but print to screen.
+		function prepare_widget(){
+			if (!$this->load_magpie())
+				return false;
+			if (!$this->load_options())
+				return false;
+			if (!$this->detect_tokens())
+				return false;
+			$this->force_cache();
+			$this->get_feed();
+			return true;
+		}
+		
+		// called to display a widget
+		function display_widget( $args, $num = 1 ){
+			$this->number = $num;
+			if (!$this->prepare_widget()){
+				echo '<!-- kb advanced rss had an error. sorry. -->';
+				return;
+			}
+			extract( $args );
+			echo $before_widget;
+			if ( $this->title )
+				echo $before_title . $this->title . $after_title;
+			echo $this->output_begin;
+			echo $this->items;
+			echo $this->output_end;
+			echo $this->after_widget;
+		}
+		
+		/* to use this plugin in your template, call this method, like so (actually, just use the kb_rss_template() wrapper, it's easier)
+			global $kb_advRss; // if necessary
+			$kb_advRss->display_template( $url, $numItems, $format, $utf );			*/
+		function display_template( $url, $format, $numItems=10, $utf=false, $echo=true ){
+			if (!$this->load_magpie())
+				return false;
+			if (!$this->load_options( array($url, $numItems, $format, $utf) ))
+				return false;
+			if (!$this->detect_tokens())
+				return false;
+			$this->force_cache();
+			$this->get_feed();
+			if ($echo)
+				echo $this->items;
+			else
+				return $this->items;
+		}
+	}	// END OF CLASS
+
+	// for backwards compatibility, we still use the old function name, but it's just a wrapper for the new class
+	function widget_kbrss( $args, $number = 1 ){
+		global $kb_advRss;
+		$kb_advRss->display_widget( $args, $number );
+	}
+
+	/* use this function to display an RSS feed in your template (i.e. without using the widgets interface). Args:
+		$url:		The feed's URL
+		$format:	A string formatted following the plugin's instructions. Something like '<li><a href="^link$">^title$</a></li>'
+		$numItems:	An integer--number of items from the feed to show
+		$utf:		boolean; Should we convert the feed to UTF?
+		$echo:	boolean: echo or return the result?
+	*/
+	function kb_rss_template($url, $format, $numItems=10, $utf=false, $echo=true){
+		global $kb_advRss;
+		return $kb_advRss->display_template( $url, $format, $numItems, $utf, $echo );
 	}
 
 	function widget_kbrss_control($number) {
@@ -303,11 +512,8 @@ function widget_kbrss_init() {
 		$title = htmlspecialchars($options[$number]['title'], ENT_QUOTES);
 		$linktitle = $options[$number]['linktitle'];
 		$output_format = htmlspecialchars($options[$number]['output_format'], ENT_QUOTES);
-		#$output_format = $options[$number]['output_format'];
 		$output_begin = htmlspecialchars($options[$number]['output_begin'], ENT_QUOTES);
-		#$output_begin = $options[$number]['output_begin'];
 		$output_end = htmlspecialchars($options[$number]['output_end'], ENT_QUOTES);
-		#$output_end = $options[$number]['output_end'];
 		$utf = $options[$number]['utf'];
 
 
@@ -329,46 +535,93 @@ function widget_kbrss_init() {
 		}
 		
 	?>
-				<p><strong>Basic Settings</strong></p>
-				<table>
-				<tr>
-					<td><?php _e('Title (optional):', 'kbwidgets'); ?> </td>
-					<td><input style="width: 400px;" id="kbrss-title-<?php echo "$number"; ?>" name="kbrss-title-<?php echo "$number"; ?>" type="text" value="<?php echo $title; ?>" /></td>
-				</tr>
-				<tr>
-					<td><?php _e('RSS feed URL:', 'kbwidgets'); ?> </td>
-					<td><input style="width: 400px;" id="kbrss-url-<?php echo "$number"; ?>" name="kbrss-url-<?php echo "$number"; ?>" type="text" value="<?php echo $url; ?>" /></td>
-				</tr>
-				<tr>
-					<td><?php _e('RSS icon URL (optional):', 'kbwidgets'); ?> </td>
-					<td><input style="width: 400px;" id="kbrss-icon-<?php echo $number; ?>" name="kbrss-icon-<?php echo $number; ?>" value="<?php echo $icon; ?>" /></td>
-				</tr>
-				<tr>
-					<td><?php _e('Number of items to display:', 'kbwidgets'); ?> </td>
-					<td><select id="kbrss-items-<?php echo $number; ?>" name="kbrss-items-<?php echo $number; ?>"><?php for ( $i = 1; $i <= KBRSS_MAXITEMS; ++$i ) echo "<option value='$i' ".($items==$i ? "selected='selected'" : '').">$i</option>"; ?></select></td>
-				</tr>
-				<tr>
-					<td>Link title to feed URL? </td>
-					<td><input type="checkbox" name="kbrss-linktitle-<?php echo $number; ?>" id="kbrss-linktitle-<?php echo $number; ?>" value="link" <?php if ( "link" == $linktitle ) { echo 'checked="checked"'; } ?> /> </td>
-				</tr>
-				<tr>
-					<td>Convert feed to UTF-8?</td>
-					<td><input type="checkbox" name="kbrss-utf-<?php echo $number; ?>" id="kbrss-utf-<?php echo $number; ?>" value="utf" <?php if ( "utf" == $utf ) { echo 'checked="checked"'; } ?> /> </td>
-				</tr>
-				</table>
+				<div class="kb_rss_nav"><a href="#" onclick="kb_rss_hideHelp(<?php echo $number; ?>);return false;">Settings</a> <a href="#" onclick="kb_rss_showHelp(<?php echo $number; ?>);return false;">Help</a></div>
 				
-				<p> &nbsp; </p>
-				
-				<p><strong>Advanced Options</strong><br /><small>Use the default settings to make your feed look like it would using the built-in RSS widget. To customize, use the advanced fields below.<br />Visit the <a href="http://wordpress.org/extend/plugins/kb-advanced-rss-widget/instructions/">KB Advanced RSS page</a> for tips and support.</small></p>
-				<p style="text-align:center;"><?php _e('What HTML should precede the feed? (Default: &lt;ul&gt;)', 'kbwidgets'); ?></p>
-				<input style="width: 680px;" id="kbrss-output_begin-<?php echo "$number"; ?>" name="kbrss-output_begin-<?php echo "$number"; ?>" type="text" value="<?php echo $output_begin; ?>" />
-				<p style="text-align:center;"><?php _e('What HTML should follow the feed? (Default: &lt;/ul&gt;)', 'kbwidgets'); ?></p>
-				<input style="width: 680px;" id="kbrss-output_end-<?php echo "$number"; ?>" name="kbrss-output_end-<?php echo "$number"; ?>" type="text" value="<?php echo $output_end; ?>" />
-				<p style="text-align:center;"><?php _e("How would you like to format the feed's items? Use <code>^element$</code>. Default:", 'kbwidgets'); ?><br /><small><code>&lt;li&gt;&lt;a href='^link$' title='^description$'&gt;^title$&lt;/a&gt;&lt;/li&gt;</code></small></p>
-				<textarea style="width:680px;height:50px;" id="kbrss-output_format-<?php echo "$number"; ?>" name="kbrss-output_format-<?php echo "$number"; ?>" rows="3" cols="40"><?php echo $output_format; ?></textarea>
-				<input type="hidden" id="kbrss-submit-<?php echo "$number"; ?>" name="kbrss-submit-<?php echo "$number"; ?>" value="1" />
+				<div id="kb_rss_settings_<?php echo $number; ?>">
+
+					&nbsp;<br />
+					<table>
+					<tr>
+						<td><?php _e('Title (optional):', 'kbwidgets'); ?> </td>
+						<td><input style="width: 400px;" id="kbrss-title-<?php echo "$number"; ?>" name="kbrss-title-<?php echo "$number"; ?>" type="text" value="<?php echo $title; ?>" /></td>
+					</tr>
+					<tr>
+						<td><?php _e('RSS feed URL:', 'kbwidgets'); ?> </td>
+						<td><input style="width: 400px;" id="kbrss-url-<?php echo "$number"; ?>" name="kbrss-url-<?php echo "$number"; ?>" type="text" value="<?php echo $url; ?>" /></td>
+					</tr>
+					<tr>
+						<td><?php _e('RSS icon URL (optional):', 'kbwidgets'); ?> </td>
+						<td><input style="width: 400px;" id="kbrss-icon-<?php echo $number; ?>" name="kbrss-icon-<?php echo $number; ?>" value="<?php echo $icon; ?>" /></td>
+					</tr>
+					<tr>
+						<td><?php _e('Number of items to display:', 'kbwidgets'); ?> </td>
+						<td><select id="kbrss-items-<?php echo $number; ?>" name="kbrss-items-<?php echo $number; ?>"><?php for ( $i = 1; $i <= KBRSS_MAXITEMS; ++$i ) echo "<option value='$i' ".($items==$i ? "selected='selected'" : '').">$i</option>"; ?></select></td>
+					</tr>
+					<tr>
+						<td>Link title to feed URL? </td>
+						<td><input type="checkbox" name="kbrss-linktitle-<?php echo $number; ?>" id="kbrss-linktitle-<?php echo $number; ?>" value="link" <?php if ( "link" == $linktitle ) { echo 'checked="checked"'; } ?> /> </td>
+					</tr>
+					<tr>
+						<td>Convert feed to UTF-8?</td>
+						<td><input type="checkbox" name="kbrss-utf-<?php echo $number; ?>" id="kbrss-utf-<?php echo $number; ?>" value="utf" <?php if ( "utf" == $utf ) { echo 'checked="checked"'; } ?> /> </td>
+					</tr>
+					</table>
+					
+					<p> &nbsp; </p>
+					
+					<p><strong>Formatting Options</strong><br /><small>Use the default settings to make your feed look like it would using the built-in RSS widget. To customize, use the advanced fields below.</small></p>
+					<p style="text-align:center;"><?php _e('What HTML should precede the feed? (Default: &lt;ul&gt;)', 'kbwidgets'); ?></p>
+					<input style="width: 680px;" id="kbrss-output_begin-<?php echo "$number"; ?>" name="kbrss-output_begin-<?php echo "$number"; ?>" type="text" value="<?php echo $output_begin; ?>" />
+					<p style="text-align:center;"><?php _e('What HTML should follow the feed? (Default: &lt;/ul&gt;)', 'kbwidgets'); ?></p>
+					<input style="width: 680px;" id="kbrss-output_end-<?php echo "$number"; ?>" name="kbrss-output_end-<?php echo "$number"; ?>" type="text" value="<?php echo $output_end; ?>" />
+					<p style="text-align:center;"><?php _e("How would you like to format the feed's items? Use <code>^element$</code>. Default:", 'kbwidgets'); ?><br /><small><code>&lt;li&gt;&lt;a href='^link$' title='^description$'&gt;^title$&lt;/a&gt;&lt;/li&gt;</code></small></p>
+					<textarea style="width:680px;height:50px;" id="kbrss-output_format-<?php echo "$number"; ?>" name="kbrss-output_format-<?php echo "$number"; ?>" rows="3" cols="40"><?php echo $output_format; ?></textarea>
+					<input type="hidden" id="kbrss-submit-<?php echo "$number"; ?>" name="kbrss-submit-<?php echo "$number"; ?>" value="1" />
+				</div>
+				<div id="kb_rss_help_<?php echo $number; ?>" style="display:none;">
+					<h3>Help</h3>
+					<p style="text-align:left;">For complete help, check the <a href="http://wordpress.org/extend/plugins/kb-advanced-rss-widget/">KB Advanced RSS documentation</a>. If neither that link nor the tips below answer your question, you can post your question on <a href="http://adambrown.info/b/widgets/category/kb-advanced-rss/">my blog</a>.</p>
+					<h4>Basic Usage</h4>
+					<ul>
+						<li>If you're having trouble getting your feed to display <em>at all</em>, it's probably not an issue with this widget--it's probably an issue with the feed. <a href="http://adambrown.info/b/widgets/2007/08/20/an-error-has-occured-the-feed-is-probably-down/">This post</a> (and the comments) may help.</li>
+						<li>Each item in your feed will have several fields. For help figuring out which fields are available in the feed you want to display, check the <a href="http://wordpress.org/extend/plugins/kb-advanced-rss-widget/faq/">FAQ</a> (look under "Which fields are available in the feed?").</li>
+						<li>To display an element from the feed, write the element's name like this: <code>^element$</code>. For example: <code>&lt;li&gt;&lt;a href='^link$' title='^description$'&gt;^title$&lt;/a&gt;&lt;/li&gt;</code>.</li>						
+					</ul>
+					<h4>Advanced Techniques</h4>
+					<p style="text-align:left;">You can specify options for a particular element by inserting <code>[opts:...]</code> just before the <code>$</code>, like this: <code>^element[opts:...]$</code>. Obviously, you'll need to replace <code>...</code> with something. Use any or all of these:</p>
+					<ul>
+						<li><strong>[opts:trim=50]</strong> trims the element to 50 characters.</li>
+						<li><strong>[opts:ltrim=5]</strong> left-trims (i.e. from the beginning) the first 5 characters off of the element.</li>
+						<li><strong>[opts:date=F jS Y]</strong> converts a <code>pubdate</code> element to something like <?php echo date('F jS Y'); ?> using the <a href="http://php.net/date">PHP date syntax</a>.</li>
+						<li>To combine options, use ampersands. This example will remove the first 3 letters from the title and then trim the remainder down to 20 characters: <code>^title[opts:trim=20&amp;ltrim=3]$</code></li>
+					</ul>
+					
+					
+				</div>
 	<?php
 	}
+	
+	function widget_kbrss_control_scripts(){
+		echo '
+		<style type="text/css"><!--
+		.kb_rss_nav{border-bottom:solid 1px #555;}
+		.kb_rss_nav a{border:solid 1px #555;padding:0 1em;margin-left:0.5em;background:#ffa;color:#000;font-weight:bold;}
+		.kb_rss_nav a:hover,.kb_rss_nav a:active{background:#faa;color:#000;}
+		// -->
+		</style>
+		<script type="text/javascript"><!--
+			function kb_rss_showHelp(num){
+				document.getElementById("kb_rss_help_"+num).style.display = "";
+				document.getElementById("kb_rss_settings_"+num).style.display = "none";
+			}
+			function kb_rss_hideHelp(num){
+				document.getElementById("kb_rss_help_"+num).style.display = "none";
+				document.getElementById("kb_rss_settings_"+num).style.display = "";
+			}
+		// -->
+		</script>';
+	}
+	add_action('admin_head','widget_kbrss_control_scripts');
 
 	function widget_kbrss_setup() {
 		$options = $newoptions = get_option('widget_kbrss');
@@ -428,26 +681,19 @@ function widget_kbrss_init() {
 		add_action('sidebar_admin_setup', 'widget_kbrss_setup');
 		add_action('sidebar_admin_page', 'widget_kbrss_page');
 
-		if ( is_active_widget('widget_kbrss') )
-			add_action('wp_head', 'widget_kbrss_head');
 	}
 
-	function widget_kbrss_head() {
-	?>
-		<style type="text/css">a.kbrsswidget img{background:orange;color:white;}</style>
-	<?php
-	}
-
+	$GLOBALS['kb_advRss'] = new kb_advRss();
 	widget_kbrss_register();
 
 }
 
 // add a filter for troubleshooting feeds
 function widget_kbrss_troubleshooter(){
-	global $userdata;
 	if ( !($_GET['kbrss']) )
 		return;
 
+	global $userdata;
 	if ( $userdata->user_level >= 7 ){	// that ought to do it
 		if ( file_exists(ABSPATH . WPINC . '/rss.php') )
 			require_once(ABSPATH . WPINC . '/rss.php');
