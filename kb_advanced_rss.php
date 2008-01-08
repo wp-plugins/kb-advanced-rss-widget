@@ -3,7 +3,7 @@
 Plugin Name: KB Advanced RSS Widget
 Description: Gives user complete control over how feeds are displayed.
 Author: Adam R. Brown
-Version: 2.0
+Version: 2.0.1
 Plugin URI: http://adambrown.info/b/widgets/category/kb-advanced-rss/
 Author URI: http://adambrown.info/
 */
@@ -49,6 +49,7 @@ define('KBRSS_WPMU', false); // set to TRUE if you're on WP-MU to add a few extr
 		- checking cache freshness is now an optional setting
 		- unless KBRSS_WPMU is true, fewer filters on what can be in widget options
 	2.0	Rewritten for better performance and easier customization. Now written as a class. Also uses a new syntax in the widget admin. See FAQ.
+	2.0.1	Minor bug fix that would have caused invalid HTML output. Sorry.
 */
 
 
@@ -441,7 +442,7 @@ function widget_kbrss_init() {
 			echo $this->output_begin;
 			echo $this->items;
 			echo $this->output_end;
-			echo $this->after_widget;
+			echo $after_widget;
 		}
 		
 		/* to use this plugin in your template, call this method, like so (actually, just use the kb_rss_template() wrapper, it's easier)
