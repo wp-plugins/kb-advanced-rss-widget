@@ -3,7 +3,7 @@
 Plugin Name: KB Advanced RSS Widget
 Description: Gives user complete control over how feeds are displayed.
 Author: Adam R. Brown
-Version: 2.0.1
+Version: 2.1
 Plugin URI: http://adambrown.info/b/widgets/category/kb-advanced-rss/
 Author URI: http://adambrown.info/
 */
@@ -18,6 +18,7 @@ define('KBRSS_FORCECACHE', false); // if your widgets don't update after more th
 
 define('KBRSS_WPMU', false); // set to TRUE if you're on WP-MU to add a few extra filters to what folks can put into their widgets. Note that it's up to
 				// you to determine whether this plugin is really secure enough for WPMU, though.
+				// Setting true also disables the [opts:bypasssecurity] option.
 
 
 
@@ -50,6 +51,11 @@ define('KBRSS_WPMU', false); // set to TRUE if you're on WP-MU to add a few extr
 		- unless KBRSS_WPMU is true, fewer filters on what can be in widget options
 	2.0	Rewritten for better performance and easier customization. Now written as a class. Also uses a new syntax in the widget admin. See FAQ.
 	2.0.1	Minor bug fix that would have caused invalid HTML output. Sorry.
+	2.1	Adding options. Check it out.
+		- checkbox to reverse order of feed
+		- checkbox to hide feed when it's empty or down
+		- opts:bypasssecurity to allow javascript in feeds you trust
+		- fix bug so it now strips feed:// off the front like it was supposed to already :)
 */
 
 
@@ -101,6 +107,8 @@ function widget_kbrss_init() {
 		var $output_end; // what HTML will we follow the feed items with? (e.g. </ul>)
 		var $utf; // convert the feed to UTF?
 		var $icon; // URL to an RSS icon to display
+		var $display_empty; // Display an error when feed is down/empty? (false will hide the widget when feed is down)
+		var $reverse_order; // reverse order of feed items?
 		
 		// data used internally
 		var $number; // which widget is this? You can use multiple widgets, so we need to know which we're working with here.
@@ -160,7 +168,7 @@ function widget_kbrss_init() {
 
 			// If the feed URL is given as "feed:http://example.com/rss", lop off the "feed:' part:
 			while ( strstr($this->url, 'http') != $this->url )
-				$url = substr($url, 1);
+				$this->url = substr($this->url, 1);
 
 			// for caching
 			$this->md5 = md5($this->url);
@@ -172,6 +180,8 @@ function widget_kbrss_init() {
 			$this->output_format = $options[$this->number]['output_format'];
 			$this->output_end = $options[$this->number]['output_end'];
 			$this->utf = $options[$this->number]['utf'];
+			$this->display_empty = (1==$options[$this->number]['display_empty']) ? true : false;
+			$this->reverse_order = (1==$options[$this->number]['reverse_order']) ? true : false;
 			
 			// icon?
 			$this->icon = $options[$this->number]['icon'];
@@ -226,6 +236,8 @@ function widget_kbrss_init() {
 			
 			// PART II: PREPARE ITEM INFORMATION
 			if ( is_array($rss->items) && !empty( $rss->items ) ){
+				if ($this->reverse_order)
+					$rss->items = array_reverse( $rss->items );
 				$rss->items = array_slice($rss->items, 0, $this->num_items);
 
 				// initialize. Critical if there are multiple kb rss widgets.
@@ -266,24 +278,33 @@ function widget_kbrss_init() {
 					$this->items = utf8_encode( $this->items );
 
 			}else{ // no feed, display an error message
-				if ( '<li' === substr( $this->output_format, 0, 3 ) )
-					$this->items = '<li>' . __( 'An error has occurred; the feed is probably down. Try again later.' ) . '</li>';
-				else
-					$this->items = __( 'An error has occurred; the feed is probably down. Try again later.' );
+				if ($this->display_empty){
+					if ( '<li' === substr( $this->output_format, 0, 3 ) )
+						$this->items = '<li>' . __( 'An error has occurred; the feed is probably down. Try again later.' ) . '</li>';
+					else
+						$this->items = __( 'An error has occurred; the feed is probably down. Try again later.' );
+				}else{	// display nothing when feed is down/empty
+					$this->items = '';
+					return false;
+				}
 			}
+			return true; // always return true, except for one case above
 		}
 		// helper for the items loop in previous function. This is where we implement most of the options. This is the part of the plugin to edit if you
 		// want to add a new functionality. See the FAQ for details.
 		function item_cleanup($text,$opts=false,$url=false){
-			// some cleanup for security:
-			if ($url)
-				$text = clean_url(strip_tags($text));
-			else
-				$text = str_replace(array("\n", "\r"), ' ', attribute_escape(strip_tags(html_entity_decode($text, ENT_QUOTES))));
+			// some cleanup for security. To bypass, set KBRSS_ALLOW_NOSECURITY true (top of this file) and use [opts:bypasssecurity] in field options.
+			if (KBRSS_WPMU || !is_array($opts) || !array_key_exists('bypasssecurity',$opts)){
+				if ($url)
+					$text = clean_url(strip_tags($text));
+				else
+					$text = str_replace(array("\n", "\r"), ' ', attribute_escape(strip_tags(html_entity_decode($text, ENT_QUOTES))));
+			}
+
 			// apply opts, if given:
 			if (!is_array($opts))
 				return $text;
-			extract($opts);
+			extract($opts, EXTR_SKIP);
 			
 			// date formatting on pubdate
 			if ($date){
@@ -293,7 +314,7 @@ function widget_kbrss_init() {
 			/////////////////////////////////////////////////////////////////////////////////////////////
 			///////////////////////////////// CUSTOMIZATIONS /////////////////////////////////////////
 			/////////////////////////////////////////////////////////////////////////////////////////////
-			// If you want to write customizations, but them here. The variable to modify is $text. See the FAQ.
+			// If you want to write customizations, put them here. The variable to modify is $text. See the FAQ.
 			/////////////////////////////////////////////////////////////////////////////////////////////
 			/////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -424,7 +445,8 @@ function widget_kbrss_init() {
 			if (!$this->detect_tokens())
 				return false;
 			$this->force_cache();
-			$this->get_feed();
+			if (!$this->get_feed()) // fails if feed is down or empty
+				return false;
 			return true;
 		}
 		
@@ -456,7 +478,8 @@ function widget_kbrss_init() {
 			if (!$this->detect_tokens())
 				return false;
 			$this->force_cache();
-			$this->get_feed();
+			if (!$this->get_feed())	// fails if feed is down or empty
+				return false;
 			if ($echo)
 				echo $this->items;
 			else
@@ -496,6 +519,8 @@ function widget_kbrss_init() {
 				$newoptions[$number]['title'] = trim( stripslashes($_POST["kbrss-title-$number"]) );
 			}
 			$newoptions[$number]['linktitle'] = ( "link" == $_POST["kbrss-linktitle-$number"] ) ? "link" : null;
+			$newoptions[$number]['display_empty'] = (1==$_POST["kbrss-hideempty-$number"]) ? 0 : 1;
+			$newoptions[$number]['reverse_order'] = (1==$_POST["kbrss-reverseorder-$number"]) ? 1 : 0;
 			$newoptions[$number]['output_format'] = htmlspecialchars_decode( stripslashes($_POST["kbrss-output_format-$number"]) );
 			$newoptions[$number]['output_begin'] = htmlspecialchars_decode( stripslashes($_POST["kbrss-output_begin-$number"]) );
 			$newoptions[$number]['output_end'] = htmlspecialchars_decode( stripslashes($_POST["kbrss-output_end-$number"]) );
@@ -512,6 +537,8 @@ function widget_kbrss_init() {
 		$items = (int) $options[$number]['items'];
 		$title = htmlspecialchars($options[$number]['title'], ENT_QUOTES);
 		$linktitle = $options[$number]['linktitle'];
+		$display_empty = (int) $options[$number]['display_empty'];
+		$reverse_order = (int) $options[$number]['reverse_order'];
 		$output_format = htmlspecialchars($options[$number]['output_format'], ENT_QUOTES);
 		$output_begin = htmlspecialchars($options[$number]['output_begin'], ENT_QUOTES);
 		$output_end = htmlspecialchars($options[$number]['output_end'], ENT_QUOTES);
@@ -544,27 +571,35 @@ function widget_kbrss_init() {
 					<table>
 					<tr>
 						<td><?php _e('Title (optional):', 'kbwidgets'); ?> </td>
-						<td><input style="width: 400px;" id="kbrss-title-<?php echo "$number"; ?>" name="kbrss-title-<?php echo "$number"; ?>" type="text" value="<?php echo $title; ?>" /></td>
+						<td colspan="3"><input style="width: 400px;" id="kbrss-title-<?php echo "$number"; ?>" name="kbrss-title-<?php echo "$number"; ?>" type="text" value="<?php echo $title; ?>" /></td>
 					</tr>
 					<tr>
-						<td><?php _e('RSS feed URL:', 'kbwidgets'); ?> </td>
-						<td><input style="width: 400px;" id="kbrss-url-<?php echo "$number"; ?>" name="kbrss-url-<?php echo "$number"; ?>" type="text" value="<?php echo $url; ?>" /></td>
+						<td><label for="kbrss-url-<?php echo $number; ?>"><?php _e('RSS feed URL:', 'kbwidgets'); ?> </label></td>
+						<td colspan="3"><input style="width: 400px;" id="kbrss-url-<?php echo $number; ?>" name="kbrss-url-<?php echo "$number"; ?>" type="text" value="<?php echo $url; ?>" /></td>
 					</tr>
 					<tr>
-						<td><?php _e('RSS icon URL (optional):', 'kbwidgets'); ?> </td>
-						<td><input style="width: 400px;" id="kbrss-icon-<?php echo $number; ?>" name="kbrss-icon-<?php echo $number; ?>" value="<?php echo $icon; ?>" /></td>
+						<td><label for="kbrss-icon-<?php echo $number; ?>"><?php _e('RSS icon URL (optional):', 'kbwidgets'); ?> </label></td>
+						<td colspan="3"><input style="width: 400px;" id="kbrss-icon-<?php echo $number; ?>" name="kbrss-icon-<?php echo $number; ?>" value="<?php echo $icon; ?>" /></td>
 					</tr>
 					<tr>
-						<td><?php _e('Number of items to display:', 'kbwidgets'); ?> </td>
-						<td><select id="kbrss-items-<?php echo $number; ?>" name="kbrss-items-<?php echo $number; ?>"><?php for ( $i = 1; $i <= KBRSS_MAXITEMS; ++$i ) echo "<option value='$i' ".($items==$i ? "selected='selected'" : '').">$i</option>"; ?></select></td>
+						<td><label for="kbrss-items-<?php echo $number; ?>"><?php _e('Number of items to display:', 'kbwidgets'); ?> </label></td>
+						<td colspan="3"><select id="kbrss-items-<?php echo $number; ?>" name="kbrss-items-<?php echo $number; ?>"><?php for ( $i = 1; $i <= KBRSS_MAXITEMS; ++$i ) echo "<option value='$i' ".($items==$i ? "selected='selected'" : '').">$i</option>"; ?></select></td>
 					</tr>
 					<tr>
-						<td>Link title to feed URL? </td>
-						<td><input type="checkbox" name="kbrss-linktitle-<?php echo $number; ?>" id="kbrss-linktitle-<?php echo $number; ?>" value="link" <?php if ( "link" == $linktitle ) { echo 'checked="checked"'; } ?> /> </td>
+						<td style="text-align:right;"><input type="checkbox" name="kbrss-linktitle-<?php echo $number; ?>" id="kbrss-linktitle-<?php echo $number; ?>" value="link" <?php if ( "link" == $linktitle ) { echo 'checked="checked"'; } ?> /> </td>
+						<td><label for="kbrss-linktitle-<?php echo $number; ?>">Link title to feed URL? </label></td>
+
+
+						<td><input type="checkbox" name="kbrss-hideempty-<?php echo $number; ?>" id="kbrss-hideempty-<?php echo $number; ?>" value="1" <?php if ( 1!=$display_empty ){ echo 'checked="checked"'; } ?> /> </td>
+						<td><label for="kbrss-hideempty-<?php echo $number; ?>">Hide widget when feed is down? </label></td>
 					</tr>
 					<tr>
-						<td>Convert feed to UTF-8?</td>
-						<td><input type="checkbox" name="kbrss-utf-<?php echo $number; ?>" id="kbrss-utf-<?php echo $number; ?>" value="utf" <?php if ( "utf" == $utf ) { echo 'checked="checked"'; } ?> /> </td>
+						<td style="text-align:right;"><input type="checkbox" name="kbrss-utf-<?php echo $number; ?>" id="kbrss-utf-<?php echo $number; ?>" value="utf" <?php if ( "utf" == $utf ) { echo 'checked="checked"'; } ?> /> </td>
+						<td><label for="kbrss-utf-<?php echo $number; ?>">Convert feed to UTF-8? </label></td>
+
+
+						<td><input type="checkbox" name="kbrss-reverseorder-<?php echo $number; ?>" id="kbrss-reverseorder-<?php echo $number; ?>" value="1" <?php if ( 1===$reverse_order ){ echo 'checked="checked"'; } ?> /> </td>
+						<td><label for="kbrss-reverseorder-<?php echo $number; ?>">Reverse order of items in feed? </label></td>
 					</tr>
 					</table>
 					
@@ -593,7 +628,10 @@ function widget_kbrss_init() {
 					<ul>
 						<li><strong>[opts:trim=50]</strong> trims the element to 50 characters.</li>
 						<li><strong>[opts:ltrim=5]</strong> left-trims (i.e. from the beginning) the first 5 characters off of the element.</li>
-						<li><strong>[opts:date=F jS Y]</strong> converts a <code>pubdate</code> element to something like <?php echo date('F jS Y'); ?> using the <a href="http://php.net/date">PHP date syntax</a>.</li>
+						<li><strong>[opts:date=F jS Y]</strong> converts a <code>pubdate</code> element to something like <em><?php echo date('F jS Y'); ?></em> using the <a href="http://php.net/date">PHP date syntax</a>.</li>
+						<?php if (!KBRSS_WPMU){	?>
+							<li><strong>[opts:bypasssecurity]</strong> preserves a field's HTML/JavaScript. Use only on feeds you trust!</li>
+						<?php } ?>
 						<li>To combine options, use ampersands. This example will remove the first 3 letters from the title and then trim the remainder down to 20 characters: <code>^title[opts:trim=20&amp;ltrim=3]$</code></li>
 					</ul>
 					

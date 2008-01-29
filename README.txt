@@ -14,7 +14,6 @@ WordPress comes with a default RSS widget, but you get no control over how the f
 
 * Decide which RSS fields to display (as opposed to the default RSS widget, which limits you to link and title);
 * Decide how to format the fields (it doesn't have to be a list if you don't want it to be);
-* Convert feeds to UTF-8 if desired (thanks to [Christoph Juergens](http://www.cjuergens.de/)).
 
 Be aware that it's called "advanced" for a reason. You need to know some HTML to use this fully. Also, please note that this is a widget, so you need to be using a widgets-enabled theme.
 
@@ -32,7 +31,7 @@ You MUST be using a widgets-enabled theme. If you are using pre-2.2 WordPress, y
 
 If you want more (up to 9) KB Advanced RSS widgets, scroll down and increase the allotment, just like you would with text or regular RSS widgets.
 
-Check out the "Other Notes" tab for details usage instructions.
+**For detailed instructions,** check out the "Other Notes" tab.
 
 = Support =
 
@@ -100,7 +99,7 @@ Okay, now we've moved into the really advanced stuff. You probably won't follow 
 
 There are two ways to display elements from this array.
 
-Use `=>` to access one field from the array. So to access the url field from this array, you would need to type this: `^media:content=>url$` into the KB Advanced RSS widget options.
+Use `=>` to access one field from the array. So to access the url field from this array, you would need to type this: `^media:content=>url$` into the KB Advanced RSS widget options. (In versions 2.0+ of the widget, you can type `^media:content[opts:subfield=url]$` instead if you want.)
 
 Here's another example of a feed containing an array, but with a twist. When certain versions of Wordpress parse a fellow Wordpress feed, Wordpress turns the "categories" field in the feed into an array. For example, here's how Wordpress parsed part of my blog's feed:
 
@@ -119,6 +118,17 @@ Here's another example of a feed containing an array, but with a twist. When cer
 `
 
 Now, if you only wanted to list the first category, you would write `^categories=>0$`, as above. But what if you want to loop through all the categories and print all of them? Then write this: `^categories[opts:loop=true&beforeloop=BEFORE&afterloop=AFTER]$`, where BEFORE and AFTER are the html you want to appear before and after each element in the array. For example, you might write this: `^categores[opts:loop=true&beforeloop=<li>&afterloop=</li>]$`, or more properly, this: `<ul>^categores[opts:loop=true&beforeloop=<li>&afterloop=</li>]$</ul>`.
+
+**Complete list of options**
+
+Now that you've learned how to use `[opts:...]`, here's a complete list of the options available. Note that these options apply to an individual field, not to the feed as a whole.
+
+* `[opts:date=...]` - For displaying the `[pubdate]` field nicely.
+* `[opts:trim=40]` - For trimming a field to 40 characters in length.
+* `[opts:ltrim=50]` - For trimming 50 characters off the left (beginning) of a field.
+* `[opts:bypasssecurity=1]` - For allowing a field's javascript through, if necessary. Use carefully.
+* `[opts:loop=true]` - For subarrays. See example above. You'll also use `beforeloop` and `afterloop`.
+* `[opts:subfield=...]` - Alternative syntax for displaying a specific field from an array. See example above.
 
 Okay, that's the basics. Check the FAQ for further details.
 
@@ -177,6 +187,10 @@ Check out the "Other Notes" tab.
 = Some of the available fields are arrays! =
 
 No problem. Check out the "Other Notes" tab.
+
+= What options are available? =
+
+Check out the "Other Notes" tab.
 
 = The feed shows up as gobbledygook! =
 
