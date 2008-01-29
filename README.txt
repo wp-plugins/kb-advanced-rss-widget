@@ -1,7 +1,7 @@
 === KB Advanced RSS Widget ===
 Contributors: adamrbrown
 Donate link: http://adambrown.info/b/widgets/donate/
-Tags: widget, rss, feeds, sidebar
+Tags: widget, rss, feed, feeds, sidebar, widgets, atom, xml, rss2
 Requires at least: 2.0
 Tested up to: 2.3.2
 Stable tag: trunk
@@ -143,6 +143,8 @@ Check out the "Other Notes" tab, above, for instructions.
 
 None. This is a widget. If you are using pre-WP v2.2, you need to have the [widgets plugin](http://wordpress.org/extend/plugins/widgets/) running. No matter what version of WP you're using, you need to be using a widgets-enabled theme. You control all options for KB Countdown from the widgets administration menu.
 
+If you really want to use this in your theme and not as a widget, open the plugin file and search for `function kb_rss_template`. You'll find some notes there explaining what to do.
+
 = What can I do with this widget? =
 
 Lots of things. The built-in RSS widget will handle traditional headline-style feeds well, but this widget allows you to handle untraditional feeds just as easily. For example:
@@ -160,17 +162,21 @@ They update only once per hour (as coded in `wordpress/includes/rss.php`). If th
 
 and change it to true. This will manually delete the cache if it's more than 1 hour old. In newer versions of Wordpress, manually deleting the cache in this manner might cause a small error next time you load the page. Instead of displaying your feed, it will say "An error has occured, the feed is probably down." Just reload the page.
 
+= I add the widget to my sidebar, but it doesn't show up =
+
+In the widget's options, make sure "Hide widget when feed is down" is **not** checked. Go back to your blog and reload. You'll probably see something like "An error has occured; the feed is probably down." Read on...
+
 = "An error has occured; the feed is probably down." =
 
 This widget relies on Wordpress's feed parsing abilities (look in `wordpress/includes/rss.php`). Wordpress grabs the requested feed then passes it to this widget for formatting. If you are seeing this error, it means one of three things:
 
 1. The feed really is down. Wait a while and try again.
 1. Your host is blocking Wordpress from fetching the feed (very likely). [Read more here](http://wordpress.org/support/topic/120458?replies=24#post-602781).
-1. Wordpress's feed parser isn't working. Try updating to the most recent version of Wordpress. If that doesn't work, file a Wordpress bug report in Trac.
+1. Wordpress's feed parser isn't working. Try updating to the most recent version of Wordpress.
+1. Some users of this widget have suggested additional solutions to this problem. Check out the comments on [this blog post](http://adambrown.info/b/widgets/2007/08/20/an-error-has-occured-the-feed-is-probably-down/).
 
-In any case, you may want to first try using Wordpress's built-in RSS widget. If neither it nor my widget can display the feed, then you know for certain that it's one of those three reasons causing the failure. (You'll probably get the same error there, since the KB Advanced RSS widget uses the exact same error-checking method.)
+In any case, you may want to first try using Wordpress's built-in RSS widget. If neither it nor my widget can display the feed, then you know for certain that it's one of those three reasons--and not the widget itself--causing the failure.
 
-Some users of this widget have suggested solutions to this problem. Check out the comments on [this blog post](http://adambrown.info/b/widgets/2007/08/20/an-error-has-occured-the-feed-is-probably-down/).
 
 = Which fields are available in the feed? Or: I need to debug the feed. =
 
@@ -209,6 +215,10 @@ Next, open up the plugin file and search for `function item_cleanup`. Insert you
 `if (1==$extractURL){
 ...
 }`
+
+= How do I add additional options? =
+
+Read the answer to the previous question. If you think other folks would like the same option, let me know so I can add it to the plugin.
 
 = I have a question that isn't addressed here. =
 
