@@ -3,7 +3,7 @@
 Plugin Name: KB Advanced RSS Widget
 Description: Gives user complete control over how feeds are displayed.
 Author: Adam R. Brown
-Version: 2.1
+Version: 2.1.2
 Plugin URI: http://adambrown.info/b/widgets/category/kb-advanced-rss/
 Author URI: http://adambrown.info/
 */
@@ -13,7 +13,7 @@ Author URI: http://adambrown.info/
 
 // SETTINGS
 define('KBRSS_HOWMANY', 20);	// max number of KB RSS widgets that you can have. Set to whatever you want. But don't put it higher than you need, or you may gum up your server.
-define('KBRSS_MAXITEMS', 10);	// max number of items you can display from a feed. Obviously, you can't get more than are in the actual feed.
+define('KBRSS_MAXITEMS', 20);	// max number of items you can display from a feed. Obviously, you can't get more than are in the actual feed.
 define('KBRSS_FORCECACHE', false); // if your widgets don't update after more than 1 hour, set this to true.
 
 define('KBRSS_WPMU', false); // set to TRUE if you're on WP-MU to add a few extra filters to what folks can put into their widgets. Note that it's up to
@@ -56,6 +56,8 @@ define('KBRSS_WPMU', false); // set to TRUE if you're on WP-MU to add a few extr
 		- checkbox to hide feed when it's empty or down
 		- opts:bypasssecurity to allow javascript in feeds you trust
 		- fix bug so it now strips feed:// off the front like it was supposed to already :)
+	2.1.1	Fix typo on line 148 that prevented the kb_rss_template() function from working correctly
+	2.1.2	Some minor tweaks in preparation for wp 2.5.
 */
 
 
@@ -145,7 +147,7 @@ function widget_kbrss_init() {
 			if (is_array($args)){
 				$this->number = 0;
 				$options[0]['url'] = $args[0];
-				$options[0]['num_items'] = $args[1];
+				$options[0]['items'] = $args[1];
 				$options[0]['output_format'] = $args[2];
 				$options[0]['utf'] = $args[3];
 			}else{
