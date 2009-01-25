@@ -3,7 +3,7 @@ Contributors: adamrbrown
 Donate link: http://adambrown.info/b/widgets/donate/
 Tags: widget, rss, feed, feeds, sidebar, widgets, atom, xml, rss2
 Requires at least: 2.0
-Tested up to: 2.5
+Tested up to: 2.8
 Stable tag: trunk
 
 Similar to the default RSS widget, but gives you complete control over how RSS feeds are parsed for your sidebar.
@@ -25,7 +25,7 @@ If you post your support questions as comments below, I probably won't see them.
 
 You MUST be using a widgets-enabled theme. If you are using pre-2.2 WordPress, you'll also need the [sidebar widgets plugin](http://wordpress.org/extend/plugins/widgets/).
 
-1. Upload `kb_advanced_rss.php` to either `/wp-content/plugins/widgets/` or `/wp-content/plugins/`.
+1. WP 2.7+: Use the plugin installer. Older versions of WP: Upload `kb_advanced_rss.php` to either `/wp-content/plugins/widgets/` or `/wp-content/plugins/`.
 1. Activate the widget through the 'Plugins' menu in WordPress.
 1. Add the new KB Advanced RSS widget to your sidebar through the 'Presentation => Sidebar Widgets' menu in WordPress. You'll find that the widget has several options, but only the first couple are required.
 
