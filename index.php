@@ -3,7 +3,7 @@
 Plugin Name: KB Advanced RSS Widget
 Description: Gives user complete control over how feeds are displayed.
 Author: Adam R. Brown
-Version: 2.8
+Version: 2.8.01
 Plugin URI: http://adambrown.info/b/widgets/category/kb-advanced-rss/
 Author URI: http://adambrown.info/
 */
@@ -50,6 +50,8 @@ Author URI: http://adambrown.info/
 		- Now includes its own copy of magpie, since WP is moving toward simplepie
 		- Relies entirely on independent rss caching, not magpie's caching
 		- REMOVED the ability to call this plugin manually from a template. MUST be used as a widget.
+	2.8.01
+		Minor bugfix. Oops. Saves correctly now.
 */
 
 

@@ -24,7 +24,9 @@ define('KBRSS_MAXITEMS', 25);
 // whether this plugin is really secure enough for WPMU, though.
 // Setting true also disables the [opts:bypasssecurity] option.
 if ( $wpmu_version )
-	define('KBRSS_WPMU', true); 
+	define('KBRSS_WPMU', true);
+else
+	define('KBRSS_WPMU', false); // change here to override and make always true
 
 
 
@@ -600,7 +602,6 @@ class KB_Adv_RSS extends WP_Widget {
 			echo '<p class="widget-error"><strong>' . sprintf( __('KB Advanced RSS Error: %s'), $error) . '</strong></p>';
 			
 		// form output begins now:
-		
 		?>	
 			<p><strong>For help:</strong> <a href="http://wordpress.org/extend/plugins/kb-advanced-rss-widget/other_notes/">Read the documentation</a>.
 
@@ -680,17 +681,17 @@ function KB_Adv_RSS_process( $widget_rss, $check_feed=true ) { // UPDATED
 	$reverse_order = (in_array($widget_rss['reverse_order'],$valid)) ? (int) $widget_rss['reverse_order'] : 0;
 	$utf = (in_array($widget_rss['utf'],$valid)) ? (int) $widget_rss['utf'] : 0;
 	
-	if (KBRSS_WPMU){ // extra filters if set TRUE
+	/*if (KBRSS_WPMU){ // extra filters if set TRUE
 		$title     = trim(strip_tags( $widget_rss['title'] ));
 		$output_format = trim( strip_tags( $widget_rss['output_format'] ) );
 		$output_begin = trim( strip_tags( $widget_rss['output_begin'] ) );
 		$output_end = trim( strip_tags( $widget_rss['output_end'] ) );
-	}else{
+	}else{*/
 		$title     = trim( $widget_rss['title'] );
 		$output_format = trim( $widget_rss['output_format'] );
 		$output_begin = trim( $widget_rss['output_begin'] );
 		$output_end = trim( $widget_rss['output_end'] );
-	}
+	//}
 
 	// done scrubbing input; check the feed if the feed's url changed.
 	
@@ -710,347 +711,6 @@ function KB_Adv_RSS_process( $widget_rss, $check_feed=true ) { // UPDATED
 	*/
 	
 	return compact( 'title', 'url', 'link', 'items', 'error', 'icon', 'linktitle', 'display_empty', 'reverse_order', 'utf', 'output_format', 'output_begin', 'output_end' );
-}
-
-
-
-
-
-
-
-
-
-
-
-/**
- * Display the RSS entries in a list. Note that you can call this function from your
- * theme if you really want to. I'll let you figure out which args you'll need, though.
- */
-function KB_Adv_RSS_output( $rss, $args = array() ) {
-
-	// VALIDATE ARGS
-	if ( is_string( $rss ) ) {
-		$rss = fetch_feed($rss);
-	} elseif ( is_array($rss) && isset($rss['url']) ) {
-		$args = $rss;
-		$rss = fetch_feed($rss['url']);
-	} elseif ( !is_object($rss) ) {
-		return;
-	}
-	
-	// IS THERE AN ERROR? If it's an admin viewing, then display the error msg.
-	if ( is_wp_error($rss) ) {
-		if ( is_admin() || current_user_can('manage_options') )
-			echo '<p>' . sprintf( __('<strong>RSS Error</strong>: %s'), $rss->get_error_message() ) . '</p>';
-		return;
-	}
-
-	// PREPARE ARGS/OPTIONS
-	extract( $args, EXTR_SKIP );
-	
-	if ( !$output_format ){
-		echo '<p>Error; check your widget settings. You MUST specify an output format.</p>';
-		return;
-	}
-
-	$items = (int) $items;
-	if ( $items < 1 || KBRSS_MAXITEMS < $items )
-		$items = 10;
-
-	$linktitle = (int) $linktitle;
-	$display_empty = (int) $display_empty;
-	$reverse_order = (int) $reverse_order;
-	$utf = (int) $utf;
-
-	// DETECT WHICH TOKENS ARE USED IN output_format HERE: (like "detect_tokens()" in old version of the plugin)
-	
-	// this next chunk of code is complicated and probably poorly written.
-	// for a thorough markup with lots of commentary to explain what's going on here, 
-	// look in the wp-2-7.php file in this folder and look at all the comments preceding the
-	// "detect_tokens()" function.
-	
-	preg_match_all( '~\^([^$]+)\$~', $output_format, $matches, PREG_SET_ORDER);
-			/* $matches will look something like this
-				[0] => Array        (		[0] => ^title$,	[1] => title		)
-				[1] => Array        (		[0] => ^description%%75$,	[1] => description%%75		)	*/
-	if (!is_array($matches) || empty($matches)){
-		echo '<p>Error; check your widget settings. You MUST specify an output format that contains usable tags.</p>';
-		return false;
-	}
-
-	$tokens = array();
-	$used = array();
-	foreach( $matches as $match ){
-		// if they use the same token twice, let's not insert it into the tokens array twice:
-		if ( in_array($match[0], $used) )
-			continue;
-		$used[] = $match[0];
-
-		// initialize (critical)
-		$token = array();
-		$token['slug'] = $match[0];
-		$token['opts'] = array(); // important
-
-		// THE NEW SYNTAX: ^fieldname[opts:trim=50&ltrim=30&date=]$
-		if ( strpos($match[1], '[opts:') ){
-			$explode = explode( '[opts:', $match[1], 2 );
-			$match[1] = $explode[0];
-			$opts = substr( $explode[1], 0, -1 ); // cut off ] at the end
-			parse_str( $opts, $options );
-			$token['opts'] = array_merge( $token['opts'], $options );
-		}
-
-		// backwards compatibility: LOOK FOR %%, =>, ||
-
-		// detect options: Trim? %%
-		if ( strpos($match[1], '%%') ){
-			$explode = explode( '%%', $match[1] );
-			$match[1] = $explode[0];
-			$token['opts']['trim'] = $explode[1];
-		}
-
-		// detect options: displaying arrays (NOTE: I need to check whether this is still necessary with SimplePie)
-		if ( strpos($match[1], '=>') ){
-			$explode = explode( '=>', $match[1], 2);
-			$match[1] = $explode[0];
-			$token['opts']['subfield'] = $explode[1];
-		}elseif( strpos($match[1], '||') ){
-			$explode = explode( '||', $match[1], 3);
-			$match[1] = $explode[0];
-			$token['opts']['loop'] = true;
-			$token['opts']['beforeloop'] = $explode[1];
-			$token['opts']['afterloop'] = $explode[2];
-		}
-
-		$token['field'] = $match[1];
-
-		// all done. add to master array
-		$tokens[] = $token;
-	}
-
-	if (empty($tokens)){
-		echo '<p>Error; check your widget settings. You MUST specify an output format that contains usable tags.</p>';
-		return false;
-	}
-	
-	// okay; we've defined $tokens.
-
-	
-	// (from here down is like "get_feed()" in old version of the plugin)
-		
-	// EXTRACT CHANNEL INFORMATION:
-
-	// feed description
-	$desc = esc_attr(strip_tags(@html_entity_decode($rss->get_description(), ENT_QUOTES, get_option('blog_charset'))));
-	
-	// CHECK WHETHER FEED IS EMPTY
-	if ( !$rss->get_item_quantity() ) {
-		if ($display_empty){
-			echo $output_begin;
-			if ( '<li' === substr( $this->output_format, 0, 3 ) )
-				$out = '<li>' . __( 'An error has occurred; the feed is probably down. Try again later.' ) . '</li>';
-			else
-				$out = __( 'An error has occurred; the feed is probably down. Try again later.' );
-			echo $output_end;
-		}
-		return false;
-	}
-
-	// THE FEED IS NOT EMPTY; PROCEED TO PROCESS FEED ITEMS
-	// first we'll build all the rss items into $out:
-	$out = '';
-
-	$rssitems = $rss->get_items();
-	
-	if ( $reverse_order )
-		$rssitems = array_reverse( $rssitems );
-	
-	$rssitems = array_slice( $rssitems, 0, $items );
-	$rssitems = array_slice( $rssitems, 1, 1 ); ////////////!!!!!!!!!!!!!!!!!!!!
-	print_r( $rssitems );
-	die;
-	
-	// loop through each item in the feed:
-	foreach( $rssitems as $item ){
-		echo 'title';
-		print_r( find_simplepie_tags($item,'title') ); // TRY USING MY HELPER?
-		
-		//AAAAARRRRRRRRRRRGGGGGGGGGGGG
-		// got the whole thing working--
-		// only problem is that it's darn near impossible to identify tags from
-		// the feed using simplepie!!!!
-		
-		
-		//print_r( $item->get_item_tags( 'title' ) );
-	/*	echo 'desc';
-		print_r( $item->get_item_tags( 'desc' ));
-		echo 'description';
-		print_r( $item->get_item_tags( 'description' ));
-		echo 'muhana';
-		print_r( $item->get_item_tags( 'muhanayouugly' ));
-		die;
-		/*
-		// loop through each token from $output_format that we need to find in $item
-		$find = array(); // initialize
-		foreach( $tokens as $token ){
-			$replace = ''; // initialize
-			
-			// does the token exist in this feed item?
-			$now = $item->get_item_tags( $token );
-			
-			// how to display this field?
-			if ( is_array($item[ $token['field'] ]) ){
-				// display a subfield:
-				if ( $token['opts']['subfield'] ){
-					$replace = $item[ $token['field'] ][ $token['opts']['subfield'] ];
-					$replace = $this->item_cleanup( $replace, $token['opts'] );
-				// loop through items in this field:
-				}elseif ( $token['opts']['loop'] ) {
-					foreach( $item[ $token['field'] ] as $subfield ){
-						$subfield = $this->item_cleanup( $subfield, $token['opts'] );
-						$replace .= $token['opts']['beforeloop'] . $subfield . $token['opts']['afterloop'];
-						}
-				}
-			}else{
-				$replace = $item[ $token['field'] ];
-				$is_url = ('link'==$token['slug']) ? true : false;
-				$replace = $this->item_cleanup( $replace, $token['opts'], $is_url );
-			}
-			$find[ $token['slug'] ] = $replace;
-		
-					$keys = array_keys( $find );
-					$vals = array_values( $find );
-					$this->items .= str_replace( $keys, $vals, $this->output_format );
-		}
-		
-		if ($this->utf)
-			$this->items = utf8_encode( $this->items );
-
-	
-	// */
-	}
-	
-	
-	
-	
-	
-	// DONE. PRODUCE FINAL OUTPUT:
-	echo $output_begin;
-	echo $out;
-	echo $output_end;
-}
-	
-/// FOR REFERENCE:
-/*
-	echo '<ul>';
-	foreach ( $rss->get_items(0, $items) as $item ) {
-		$link = $item->get_link();
-		while ( stristr($link, 'http') != $link )
-			$link = substr($link, 1);
-		$link = esc_url(strip_tags($link));
-		$title = esc_attr(strip_tags($item->get_title()));
-		if ( empty($title) )
-			$title = __('Untitled');
-
-		$desc = str_replace(array("\n", "\r"), ' ', esc_attr(strip_tags(@html_entity_decode($item->get_description(), ENT_QUOTES, get_option('blog_charset')))));
-		$desc = wp_html_excerpt( $desc, 360 ) . ' [&hellip;]';
-		$desc = esc_html( $desc );
-
-		if ( $show_summary ) {
-			$summary = "<div class='rssSummary'>$desc</div>";
-		} else {
-			$summary = '';
-		}
-
-		$date = '';
-		if ( $show_date ) {
-			$date = $item->get_date();
-
-			if ( $date ) {
-				if ( $date_stamp = strtotime( $date ) )
-					$date = ' <span class="rss-date">' . date_i18n( get_option( 'date_format' ), $date_stamp ) . '</span>';
-				else
-					$date = '';
-			}
-		}
-
-		$author = '';
-		if ( $show_author ) {
-			$author = $item->get_author();
-			if ( is_object($author) ) {
-				$author = $author->get_name();
-				$author = ' <cite>' . esc_html( strip_tags( $author ) ) . '</cite>';
-			}
-		}
-
-		if ( $link == '' ) {
-			echo "<li>$title{$date}{$summary}{$author}</li>";
-		} else {
-			echo "<li><a class='rsswidget' href='$link' title='$desc'>$title</a>{$date}{$summary}{$author}</li>";
-		}
-	}
-	echo '</ul>';
-}
-*/
-
-
-// helper for the items loop in previous function. This is where we implement most of the options. This is the part of the plugin to edit if you want to add a new functionality. See the FAQ for details.
-function kbar_item_cleanup($text,$opts=false,$url=false){
-	// some cleanup for security. To bypass, set KBRSS_ALLOW_NOSECURITY true (top of this file) and use [opts:bypasssecurity] in field options.
-	if (KBRSS_WPMU || !is_array($opts) || !array_key_exists('bypasssecurity',$opts)){
-		if ($url)
-			$text = clean_url(strip_tags($text));
-		else
-			$text = str_replace(array("\n", "\r"), ' ', attribute_escape(strip_tags(html_entity_decode($text, ENT_QUOTES))));
-	}
-
-	// apply opts, if given:
-	if (!is_array($opts))
-		return $text;
-	extract($opts, EXTR_SKIP);
-	
-	// date formatting on pubdate
-	if ($date){
-		$text = kbar_make_date($text,$date);
-	}
-	
-	/////////////////////////////////////////////////////////////////////////////////////////////
-	///////////////////////////////// CUSTOMIZATIONS /////////////////////////////////////////
-	/////////////////////////////////////////////////////////////////////////////////////////////
-	// If you want to write customizations, put them here. The variable to modify is $text. See the FAQ.
-	/////////////////////////////////////////////////////////////////////////////////////////////
-	/////////////////////////////////////////////////////////////////////////////////////////////
-
-	// left trimming:
-	$ltrim = (is_numeric($ltrim) && 0<$ltrim) ? (int) $ltrim : null;
-	if (is_int($ltrim))
-		$text = substr( $text, $ltrim );
-
-	// length trimming (do after left trimming)
-	$trim = (is_numeric($trim) && 0<$trim) ? (int) $trim : null;
-	if (is_int($trim))
-		$text = substr( $text, 0, $trim );
-
-	return $text;
-}
-// another helper
-function kbar_make_date($string, $format){
-	$time = strtotime( $string );
-	if (false===$time || -1===$time)
-		return $string;
-	return date( $format, $time );
-}
-
-// a helper to find tags in simplepie--like simplepie's ->get_item_tags() method, but without
-// requiring you to know the tag's namespace.
-function find_simplepie_tags($item,$tag){
-	$tag = trim( $tag );
-	if ( !$tag )
-		return false;
-	if ( !is_array( $item->data['child'] ) )
-		wp_die( 'FAIL' );
-	wp_die( print_r( $item->data['child'], true ) );
-	// data['child'][$namespace][$tag]
 }
 
 
