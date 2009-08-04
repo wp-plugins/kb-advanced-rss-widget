@@ -5,8 +5,6 @@
 
 
 
-// this is the version that gets called on versions of WP older than 2.7. It's just v2.1.2 of the plugin.
-
 // due to changes in the WP interface with WP version 2.7, I had to fix a few weird problems (and put in a bug alert). Grr.
 
 

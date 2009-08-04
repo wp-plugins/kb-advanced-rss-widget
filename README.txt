@@ -3,7 +3,7 @@ Contributors: adamrbrown
 Donate link: http://adambrown.info/b/widgets/donate/
 Tags: widget, rss, feed, feeds, sidebar, widgets, atom, xml, rss2
 Requires at least: 2.0
-Tested up to: 2.8
+Tested up to: 2.8.3
 Stable tag: trunk
 
 Similar to the default RSS widget, but gives you complete control over how RSS feeds are parsed for your sidebar.
@@ -12,10 +12,12 @@ Similar to the default RSS widget, but gives you complete control over how RSS f
 
 WordPress comes with a default RSS widget, but you get no control over how the feed shows up in your sidebar. Want more control? The KB Advanced RSS widget gives it to you. With it, you can
 
-* Decide which RSS fields to display (as opposed to the default RSS widget, which limits you to link and title);
+* Decide which RSS fields to display (as opposed to the default RSS widget, which limits you to link, title, and description);
 * Decide how to format the fields (it doesn't have to be a list if you don't want it to be);
 
 Be aware that it's called "advanced" for a reason. You need to know some HTML to use this fully. Also, please note that this is a widget, so you need to be using a widgets-enabled theme.
+
+**Before upgrading to  v2.8 of the plugin, read this:** Because the WordPress developers dramatically re-wrote the widgets API in WP 2.8, I had to rewrite this plugin completely. Updating to v2.8 of the plugin will correct many annoying bugs. But, alas, it will also (most likely) cause you to lose all the options you may have set in a previous version of this plugin. Sorry. I don't foresee this happening more than once.
 
 = Support =
 
@@ -25,11 +27,8 @@ If you post your support questions as comments below, I probably won't see them.
 
 You MUST be using a widgets-enabled theme. If you are using pre-2.2 WordPress, you'll also need the [sidebar widgets plugin](http://wordpress.org/extend/plugins/widgets/).
 
-1. WP 2.7+: Use the plugin installer. Older versions of WP: Upload `kb_advanced_rss.php` to either `/wp-content/plugins/widgets/` or `/wp-content/plugins/`.
-1. Activate the widget through the 'Plugins' menu in WordPress.
+1. WP 2.7+: Use the plugin installer. Older versions of WP: Upload `kb_advanced_rss.php` to either `/wp-content/plugins/widgets/` or `/wp-content/plugins/`, then activate the plugin.
 1. Add the new KB Advanced RSS widget to your sidebar through the 'Presentation => Sidebar Widgets' menu in WordPress. You'll find that the widget has several options, but only the first couple are required.
-
-If you want more (up to 9) KB Advanced RSS widgets, scroll down and increase the allotment.
 
 **For detailed instructions,** check out the "Other Notes" tab.
 
@@ -45,7 +44,7 @@ You can see examples at the [KB Advanced RSS plugin page](http://adambrown.info/
 
 **Instructions**
 
-Background before we continue: Every RSS feed contains a number of items (e.g. headlines). Each item contains a variety of elements; at a minimum, each item usually has a title, a link, and a description.
+Background before we continue: Every RSS feed contains a number of items (e.g. headlines). Each item contains a variety of elements; at a minimum, each item usually has a title, a link, and a description. This plugin uses [MagpieRSS](http://magpierss.sourceforge.net/) (included) to grab and parse RSS feeds.
 
 **Example 1: Basic usage**
 
@@ -58,11 +57,11 @@ By default, the KB Advanced RSS widget will do exactly the same thing. But you c
 
 **Example 2: Adding another element**
 
-How do you know which elements are available? Looking at the RSS feed is a good starting point, but you should be aware that the Wordpress RSS parser modifies feeds when it parses them. To see exactly which elements are available, go to any page on your blog, then add `?kbrss=RSS_URL` to your blog's URL (replacing RSS_URL with the complete URL for the feed you are interested in).
+How do you know which elements are available? Looking at the RSS feed is a good starting point, but you should be aware that the MagpieRSS parser modifies feeds when it parses them. To see exactly which elements are available, go to any page on your blog, then add `?kbrss=RSS_URL` to your blog's URL (replacing RSS_URL with the complete URL for the feed you are interested in).
 
 For example, if your blog were at example.com, and you were interested in the Yahoo! News Most Emailed Stories feed, you would type this into your browser: `http://example.com/?kbrss=http://rss.news.yahoo.com/rss/mostemailed`. (That only works if you're logged in as an admin, so you'll have to install the plugin and then try it on your own site to see what that does.)
 
-If you do this, my plugin will spit out a copy of the PHP array that Wordpress produces when parsing your feed. Each item in the feed shows up as a numbered part of the array. Within each item, you'll see that you have fields like "title," "link," "description," and possibly others available. Pick any one of these and add it to your KB Advanced RSS widget. Done.
+If you do this, my plugin will spit out a copy of the PHP array that MagpieRSS produces when parsing your feed. Each item in the feed shows up as a numbered part of the array. Within each item, you'll see that you have fields like "title," "link," "description," and possibly others available. Pick any one of these and add it to your KB Advanced RSS widget. Done.
 
 **Example 3: Trimming an element**
 
@@ -86,22 +85,20 @@ The `F jS Y` is PHP date syntax for something like `December 20th, 2007`.
 
 **Example 5: What if an RSS item contains an array of elements?**
 
-Okay, now we've moved into the really advanced stuff. You probably won't follow this next part unless you use the ?kbrss= thing from example 2 first and see what I'm talking about. Note that some of the items in Yahoo's feed contain something that looks something like the following (it will look slightly different depending on what version of WordPress you're using):
+Okay, now we've moved into the really advanced stuff. You probably won't follow this next part unless you use the ?kbrss= thing from example 2 first and see what I'm talking about. Note that some of the items in Yahoo's feed contain something that looks something like the following (it will look slightly different):
 
-`[media:content] => Array
-       (
-           [url] => http://d.yimg.com/us.yimg.com/p/nm/
-           [type] => image/jpeg
-           [height] => 78
-           [width] => 130
-       )
+`[media] => Array
+		(
+			[text] => <p>a bunch of stuff</p>
+			[credit] => (Reuters)
+		)
 `
 
 There are two ways to display elements from this array.
 
-Use `=>` to access one field from the array. So to access the url field from this array, you would need to type this: `^media:content=>url$` into the KB Advanced RSS widget options. (In versions 2.0+ of the widget, you can type `^media:content[opts:subfield=url]$` instead if you want.)
+Use `=>` to access one field from the array. So to access the text field from this array, you would need to type this: `^media=>text$` into the KB Advanced RSS widget options. (In versions 2.0+ of the widget, you can type `^media[opts:subfield=text]$` instead if you want.)
 
-Here's another example of a feed containing an array, but with a twist. When certain versions of Wordpress parse a fellow Wordpress feed, Wordpress turns the "categories" field in the feed into an array. For example, here's how Wordpress parsed part of my blog's feed:
+Here's another example of a feed containing an array, but with a twist. When MagpieRSS parse feeds from some versions of WordPress, for example, MagpieRSS turns the "categories" field in the feed into an array. For example, here's how MagpieRSS parsed part of my blog's feed (when it ran on an earlier version of WordPress):
 
 `
    [title] => KB Countdown update
@@ -126,7 +123,7 @@ Now that you've learned how to use `[opts:...]`, here's a complete list of the o
 * `[opts:date=...]` - For displaying the `[pubdate]` field nicely.
 * `[opts:trim=40]` - For trimming a field to 40 characters in length.
 * `[opts:ltrim=50]` - For trimming 50 characters off the left (beginning) of a field.
-* `[opts:bypasssecurity=1]` - For allowing a field's javascript through, if necessary. Use carefully.
+* `[opts:bypasssecurity=1]` - For allowing a field's javascript through, if necessary. Use carefully. Disabled in WPMU.
 * `[opts:loop=true]` - For subarrays. See example above. You'll also use `beforeloop` and `afterloop`.
 * `[opts:subfield=...]` - Alternative syntax for displaying a specific field from an array. See example above.
 
@@ -139,15 +136,9 @@ Okay, that's the basics. Check the FAQ for further details.
 
 Check out the "Other Notes" tab, above, for instructions.
 
-= I'm using WP 2.5+, and there's some funny text in the admin screen when I first add the widget to my sidebar. =
-
-Just hit "save changes" and it will go away. I'm still working on this bug.
-
 = What code do I need to place in my sidebar? =
 
-None. This is a widget. If you are using pre-WP v2.2, you need to have the [widgets plugin](http://wordpress.org/extend/plugins/widgets/) running. No matter what version of WP you're using, you need to be using a widgets-enabled theme. You control all options for KB Countdown from the widgets administration menu.
-
-If you really want to use this in your theme and not as a widget, open the plugin file and search for `function kb_rss_template`. You'll find some notes there explaining what to do.
+None. This is a widget. If you are using pre-WP v2.2, you need to have the [widgets plugin](http://wordpress.org/extend/plugins/widgets/) running. No matter what version of WP you're using, you need to be using a widgets-enabled theme. You control all options for KB Advanced RSS from the widgets administration menu.
 
 = What can I do with this widget? =
 
@@ -156,15 +147,11 @@ Lots of things. The built-in RSS widget will handle traditional headline-style f
 * Weather. Weather.com provides RSS feeds, but you'll find more flexible feeds at [RSSweather.com](http://www.rssweather.com/).
 * Upcoming events. If you have an RSS feed of calendar data, give it a go.
 
-Note that finding a suitable feed is up to you. It needs to be RSS, not just XML. (RSS is a sub-type of XML.) If you're not sure whether the feed will work with Wordpress's feed parser, then use the widget's built in debugger (see below) to check out the feed in question.
+Note that finding a suitable feed is up to you. It needs to be RSS, not just XML. (RSS is a sub-type of XML.) If you're not sure whether the feed will work with MagpieRSS's feed parser, then use the widget's built in debugger (see below) to check out the feed in question.
 
 = The feeds don't update =
 
-They update only once per hour (as coded in `wordpress/includes/rss.php`). If they don't update after more than a couple hours, look in the top of `kb_advanced_rss.php` for this line:
-
-`define('KBRSS_FORCECACHE', false);`
-
-and change it to true. This will manually delete the cache if it's more than 1 hour old. In newer versions of Wordpress, manually deleting the cache in this manner might cause a small error next time you load the page. Instead of displaying your feed, it will say "An error has occured, the feed is probably down." Just reload the page.
+They update only once per hour to avoid slowing down your site. After that, they only update if your server is actually able to communicate with the feed's site. Be patient.
 
 = I add the widget to my sidebar, but it doesn't show up =
 
@@ -172,11 +159,11 @@ In the widget's options, make sure "Hide widget when feed is down" is **not** ch
 
 = "An error has occured; the feed is probably down." =
 
-This widget relies on Wordpress's feed parsing abilities (look in `wordpress/includes/rss.php`). Wordpress grabs the requested feed then passes it to this widget for formatting. If you are seeing this error, it means one of three things:
+This widget relies on [MagpieRSS's](http://magpierss.sourceforge.net/) feed parsing abilities. MagpieRSS grabs the requested feed then passes it to this widget for formatting. If you are seeing this error, it means one of three things:
 
 1. The feed really is down. Wait a while and try again.
-1. Your host is blocking Wordpress from fetching the feed (very likely). [Read more here](http://wordpress.org/support/topic/120458?replies=24#post-602781).
-1. Wordpress's feed parser isn't working. Try updating to the most recent version of Wordpress.
+1. Your host is blocking MagpieRSS from fetching the feed (very likely). [Read more here](http://wordpress.org/support/topic/120458?replies=24#post-602781).
+1. Try updating to the most recent version of Wordpress and of this plugin.
 1. Some users of this widget have suggested additional solutions to this problem. Check out the comments on [this blog post](http://adambrown.info/b/widgets/2007/08/20/an-error-has-occured-the-feed-is-probably-down/).
 
 In any case, you may want to first try using Wordpress's built-in RSS widget. If neither it nor my widget can display the feed, then you know for certain that it's one of those three reasons--and not the widget itself--causing the failure.
@@ -188,7 +175,7 @@ Begin by looking at the source code for the feed. But note that Wordpress parses
 
 If you see that there is a field called `title` (there probably is), you would include this in your widget's output by writing `^title$`. You would probably want to wrap this in some HTML, like this: `<li>^title$</li>`. Look under the "Other Notes" tab for more details about how to display RSS feeds the way you want them in your sidebar.
 
-If all you see is `array()`--or worse, an error message--then there's a good chance that the feed in question is not an RSS feed, at least not one that the Wordpress parser knows how to handle.
+If all you see is `array()`--or worse, an error message--then there's a good chance that the feed in question is not an RSS feed, at least not one that the MagpieRSS parser knows how to handle.
 
 = How do I trim the length of an RSS field? =
 
@@ -227,3 +214,13 @@ Read the answer to the previous question. If you think other folks would like th
 = I have a question that isn't addressed here. =
 
 Be advised: **If you post your support questions as comments below, I probably won't see them.** Post your support questions at the [KB Advanced RSS plugin page](http://adambrown.info/b/widgets/category/kb-advanced-rss/) on my site if you want an answer.
+
+== Changelog ==
+
+The complete changelog back to version 1.0 is in the plugin code. Here's the changelog starting with v2.8 of the plugin:
+
+= 2.8 =
+* Fixes the "multiple widgets" problem caused by the developers' changes to the API in WP 2.8
+* Now includes its own copy of magpie, since WP is moving toward simplepie
+* Relies entirely on independent rss caching, not magpie's caching
+* REMOVED the ability to call this plugin manually from a template. MUST be used as a widget.
