@@ -631,7 +631,7 @@ class KB_Adv_RSS extends WP_Widget {
 				<td><label for="<?php echo $this->get_field_id('display_empty'); ?>">Hide widget when feed is down? </label></td>
 			</tr>
 			<tr>
-				<td style="text-align:right;"><input type="checkbox" name="<?php echo $this->get_field_name('utf'); ?>" id="<?php echo $this->get_field_id('utf'); ?>" value="utf" <?php if ( $utf ) { echo 'checked="checked"'; } ?> /> </td>
+				<td style="text-align:right;"><input type="checkbox" name="<?php echo $this->get_field_name('utf'); ?>" id="<?php echo $this->get_field_id('utf'); ?>" value="1" <?php if ( $utf ) { echo 'checked="checked"'; } ?> /> </td>
 				<td><label for="<?php echo $this->get_field_id('utf'); ?>">Convert feed to UTF-8? </label></td>
 
 

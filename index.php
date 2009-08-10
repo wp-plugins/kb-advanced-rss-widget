@@ -3,7 +3,7 @@
 Plugin Name: KB Advanced RSS Widget
 Description: Gives user complete control over how feeds are displayed.
 Author: Adam R. Brown
-Version: 2.8.01
+Version: 2.8.02
 Plugin URI: http://adambrown.info/b/widgets/category/kb-advanced-rss/
 Author URI: http://adambrown.info/
 */
@@ -52,6 +52,7 @@ Author URI: http://adambrown.info/
 		- REMOVED the ability to call this plugin manually from a template. MUST be used as a widget.
 	2.8.01
 		Minor bugfix. Oops. Saves correctly now.
+	2.8.02 Restored the utf8 option
 */
 
 

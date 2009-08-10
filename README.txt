@@ -224,3 +224,9 @@ The complete changelog back to version 1.0 is in the plugin code. Here's the cha
 * Now includes its own copy of magpie, since WP is moving toward simplepie
 * Relies entirely on independent rss caching, not magpie's caching
 * REMOVED the ability to call this plugin manually from a template. MUST be used as a widget.
+
+= 2.8.01 =
+* Minor bugfix. Oops. Saves correctly now.
+
+= 2.8.02 = 
+* Repaired the utf8 option
